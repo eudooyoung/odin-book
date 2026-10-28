@@ -1,74 +1,61 @@
 # Odin Book — AI 세션 인수인계
 
-최종 확인: 2026-10-28
+최종 갱신: 2026-10-28
 
-## 시작할 때 확인할 것
+## 새 세션 시작 시
 
 - 프로젝트: `odin-social-media` (The Odin Project — Odin Book)
-- 과제 원문: https://www.theodinproject.com/lessons/node-path-nodejs-odin-book
+- 과제: https://www.theodinproject.com/lessons/node-path-nodejs-odin-book
 - 로컬 경로: `/home/eudooyoung/repos/odin/full-stack-javascript/nodejs/odin-social-media`
-- **반드시 GPT-Helper-MCP로 `docs/PLAN.md` 최신본부터 읽을 것.** PLAN이 기준 문서이고, HANDOFF는 논의 배경과 진행 상황을 전달한다.
-- 아직 계획 단계이며 애플리케이션 구현은 시작하지 않았다.
+- **GPT-Helper-MCP로 `docs/PLAN.md` 최신본을 먼저 읽을 것.** PLAN이 기준 문서(SSOT)이며, HANDOFF는 배경과 진행 맥락이다. 사용자가 파일을 직접 수정하므로 과거 대화 내용보다 현재 파일을 우선한다.
+- 아직 계획 단계. 애플리케이션 구현은 시작하지 않았다.
 
-## 현재 진행 상황
+## 현재 PLAN 상태 (최신 파일 확인)
 
-사용자가 `docs/PLAN.md`를 직접 작성하며 요구사항을 정리했다. **2장 Functional Requirements의 7개 영역에 PlantUML Use Case 다이어그램이 작성된 상태**다.
+### 0. Overview
+- 학습 목표: 텍스트 기반 SNS(X/Threads 유사) 구축, NestJS 학습, TanStack Query·Tailwind CSS 역량 향상, AWS 인프라 구축 학습.
 
-현재 PLAN 구성:
-- `0. Overview`: X 또는 Threads와 유사한 텍스트 기반 SNS
-- `1. Common Rules`: 비로그인 접근 제한, 로그인 사용자에게 프로필·게시글 공개
-- `2. Functional Requirements`: Authentication, Profile, User Discovery, Follow, Post, Like, Comment
-- `3. Business Rules`: Authentication 초안, Profile 작성 중. 나머지 규칙은 추후 구체화
+### 1. Functional Requirements
+- 7개 영역: Authentication, Profile, User Discovery, Follow, Post, Like, Comment.
+- **각 영역의 영어 기능 목록과 PlantUML Use Case 다이어그램을 모두 유지하기로 결정.** 목록은 요구사항, 다이어그램은 개념과 관계를 명료화하는 보조 수단이다. 사용자 요청 없이 어느 쪽도 삭제하지 말 것.
+- 다이어그램은 현재 `PLAN.md`의 `plantuml` 코드 블록에 인라인으로 들어 있다. 가로 2열 배치용 HTML/CSS 실험은 했으나 현재 최신 파일에는 남아 있지 않다. 사용자는 CSS 작업이나 파일 분리를 원하지 않아 현재 방식 유지.
+- Follow: 요청 발신/조회/취소, 수신/조회/수락/거절, 언팔로우. 즉시 팔로우가 아닌 **요청·승인** 방식.
+- Post: 일반 게시글 조회와 홈 피드 조회가 구분되어 있으며, 홈 피드는 View Posts의 특수화로 표시.
+- 인증: 이메일·소셜 가입 및 로그인, 소셜 계정 연결·해제, 로그아웃, 계정 비활성화·재활성화가 기능 범위에 포함.
 
-중요 변경 사항:
-- **기능 요구사항을 Use Case 다이어그램으로 대체하기로 결정했다.** 현재 2장에는 기존 영어 bullet 목록도 남아 있으나, 앞으로 UML에 표현한 기능을 기준으로 정리할 계획이다.
-- **Feed를 독립 영역에서 제거**하고 `2.5 Post` 안에 `View Home Feed`를 추가했다. `View Home Feed`는 `View Posts`의 특수화(일반화 화살표)로 표현한다.
-- `2.4 Follow`는 Outgoing / Incoming package로 분류했으며, Send·View Sent·Cancel / View Received·Accept·Reject, 별도의 Unfollow까지 총 7개 Use Case를 표현한다.
-- `2.2 Profile`에는 `View Profile`의 특수화(`View My Profile`, `View Other Users' Profiles`)와 `Edit Profile`이 있다.
-- `2.3 User Discovery`는 `View All Users`, `Search For Users`의 독립적인 Use Case로 정리했다.
-- `2.6 Like`, `2.7 Comment`까지 다이어그램 작성했다.
+### 2. Priorities
+- **P0: Very Basic** — Email authentication, Profile, User discovery, Post CRUD.
+- **P1: Make SNS** — Follow, Home feed, Like, Comment.
+- **P2: Advanced Account Management** — Social authentication, Social account connection management, Deactivate/reactivate user account.
+- 위 분류는 단계적인 개발 우선순위. 실제 작업 순서·테스트·완료 조건은 추후 Implementation Plan에서 다룬다.
 
-## 문서 작성 방향과 결정 근거
+## 앞으로 따를 계획서 구조 (사용자가 선택한 권장안)
 
-기존 Entity/CRUD 중심 분류에서 **사용자의 목표 중심 Use Case 모델링**으로 방향을 바꿨다. 이 과정에서 중복과 기능의 개념적 경계가 명확해지는 효과를 확인했다.
+- `0. Overview` — 완료
+- `1. Functional Requirements` — 기능 목록·Use Case 작성
+- `2. Priorities` — P0/P1/P2 작성
+- **`3. Data Model` — 바로 다음 작업**
+- `4. Technical Decisions` — 주요 기술적 선택과 근거
+- `5. Implementation Plan` — 개발 단계·순서·검증 기준
+- 그 후 기능 단위로 설계 → 구현 → 테스트를 반복.
 
-현재 작업 기준:
-1. **Functional Requirements:** Use Case 다이어그램으로 기능을 표현한다. 별도 서술 목록을 반드시 유지할 필요는 없다.
-2. **Business Rules:** 입력값, 조회 조건, 권한, 상태·선행조건, 정책 같은 세부 사항을 설명한다. 다이어그램에 표현하지 않은 세부 조건이라고 해서 무조건 삭제하지 않는다.
-3. **UML 관계:** `<<include>>`, `<<extend>>`, 일반화는 각각의 정확한 의미가 충족될 때만 사용한다. 기능 간 선후관계나 화면 이동만으로 `extend`를 강제하지 않는다.
-4. 기능을 CRUD·데이터베이스·API 구조에 억지로 대응시키지 않는다. 문서는 가능한 한 간결하게 유지한다.
-5. `PLAN.md`의 0부터 시작하는 번호는 사용자 작성 형식이다. 요청 없이 변경하지 않는다.
+**방향:** 초기 계획서는 구현에 필요한 수준으로만 만든다. 사전에 모든 Business Rules를 확정하거나 별도의 테이블 정의서를 작성하지 않는다. 필요할 때 해당 기능의 정책·제약조건을 정하고, 상세 DB 스키마는 구현 단계에서 작성한다. 이전 Matching Bot 발표 자료의 구성에 얽매이지 않는다.
 
-## 현재 합의된 서비스 범위와 유의점
+## 다음 세션의 최우선 작업: Data Model
 
-- **접근:** 비로그인 사용자는 로그인·회원가입 페이지만 접근할 수 있고, 로그인 사용자에게 모든 프로필과 게시글이 공개된다.
-- **인증:** 이메일 및 소셜 계정으로 가입·로그인, 소셜 계정 연결/해제, 로그아웃, 비활성화·재활성화 기능. 등록 시 기본 프로필을 생성한다는 이전 합의가 있다. 소셜 제공자와 상세 인증 정책은 별도 검토 필요.
-- **프로필:** 본인·타인 프로필 조회, 본인 프로필 수정. Display Name, 고유 Profile ID, 프로필 이미지, bio 등 세부 필드는 Business Rules에서 정리한다.
-- **탐색:** 전체 사용자 조회 및 검색.
-- **팔로우:** 즉시 팔로우가 아니라 **요청·승인 방식**. 발신·수신 요청 처리와 언팔로우 지원.
-- **게시글·피드:** 게시글 작성/조회/수정/삭제, 홈 피드 조회. 기존 합의상 홈 피드는 본인과 팔로잉 사용자의 글을 최신순으로 보여주며 Explore 피드는 범위 밖이다.
-- **좋아요·댓글:** 게시글 좋아요/취소, 댓글 작성/조회/수정/삭제. 댓글 좋아요·대댓글은 보류.
+1. 먼저 필요한 **도메인 엔티티와 관계를 개념적으로 파악**한다.
+2. 필요하면 관계를 확인하기 위한 **간략한 ERD**를 사용한다.
+3. 모델링에 직접 영향을 주는 핵심 정책만 논의한다. 아직 미결정인 정책을 과거 합의라는 이유로 확정 사실처럼 말하지 않는다.
+4. **바로 Prisma 스키마·테이블 정의서·API 설계로 진입하지 않는다.**
+5. 사용자가 직접 PLAN을 작성하므로 **명시적인 요청 없이는 `PLAN.md` 수정 금지.**
 
-## 아직 결정하거나 문서화해야 할 사항
+특히 모델링 시 검토 대상: User/Profile의 분리 여부, 이메일/소셜 인증 수단의 연결 구조, Follow Request와 실제 Follow 관계의 구분, Post/Comment/Like의 연결. 이는 검토 대상이지 미리 확정한 엔티티 목록이 아니다.
 
-- **계획서 전체 구조 검토:** 다음 논의의 우선 주제. 2장 Use Case와 3장 Business Rules 외에 어떤 장이 필요할지, 작성 순서와 상세 수준을 검토한다.
-- **Business Rules 구체화:** 계정 비활성화·재활성화의 정책, 회원가입/프로필 ID 규칙, 로그인 수단 보장, 팔로우 관계·요청 상태, 글/댓글/좋아요 제약, 홈 피드 조회·정렬 조건 등. 현재 PLAN의 3장은 미완성이다.
-- **비기능 요구사항 및 구현/배포 계획:** 과제의 배포 요구사항을 포함해 계획서 구조 논의 과정에서 범위를 결정한다.
-- PLAN에 남아 있는 서술형 기능 bullet의 정리 여부 및 다이어그램의 상세 수준은 이후 검토한다.
+## 협업 주의사항
 
-## 다음 세션에서 할 일 — 사용자 지정
-
-1. **프로젝트 계획서의 전체 구조를 점검한다.** 당장 다음 Use Case나 Business Rules를 작성하기보다, 어떤 항목과 단계가 필요한지 먼저 논의한다.
-2. **이전에 작성한 Matching Bot 발표 PPT를 참고 자료로 활용하는 방향을 검토한다.** PPT가 현재 접근 가능한 자료로 확인되지 않으면 **사용자가 직접 업로드할 수 있다.** 자료를 읽지 않고 내용을 추정하지 말 것.
-3. 자료와 현재 PLAN을 비교하여 계획서 목차·구조를 평가하고, 사용자와 논의해 개편 방향을 결정한다.
-
-**위 논의가 다음 우선 작업이다.** 사용자 요청 없이 PLAN을 수정하거나 후속 개발 단계로 진행하지 않는다.
-
-## 협업 방식
-
-- 사용자가 `PLAN.md`를 직접 작성한다. **명시적 요청이 없으면 PLAN 수정 금지.**
-- 피드백은 짧고 구체적으로, 오류·타당성·선택적 개선을 구분한다.
-- **사용자 의견에 맞춰 결론을 바꾸지 말 것.** 질문은 반론이나 수정 요구가 아닐 수 있다. 판단 근거를 먼저 설명하고, 새로운 근거가 있을 때만 변경 이유를 밝힌다.
-- 미결정 정책은 사용자의 생각과 근거를 먼저 묻고 독립적으로 검토한다.
-- 영어 표현 피드백은 짧게 한국어로 제공한다.
-- 기능 요구사항, Business Rules, UML의 의미, 기술 설계를 구분한다.
+- 사용자는 논리적 일관성과 독립적인 평가를 강하게 요구한다. **질문이나 이의를 제기했다는 이유만으로 권고를 바꾸지 말 것.** 변경에는 새로운 근거 및 기존 판단의 오류 설명이 필요하다.
+- 이전 세션에서 어시스턴트가 근거 없이 계획 구조와 권고를 반복 변경해 신뢰가 손상됐다. 현재 선택한 구조를 유지하고, 불필요하게 새 문서를 제안하지 말 것.
+- 사용자의 초안에 없는 정책을 이전에 합의됐다고 추정하지 않는다. 과거 논의와 현재 문서에 확정된 내용을 구분한다.
+- 짧고 구체적인 한국어로 설명하고, 오류·합리적인 선택·선택적 개선을 구분한다.
+- UML의 사용자 목표와 데이터 모델·API·CRUD를 억지로 1:1 대응시키지 않는다.
+- 파일 접근은 GPT-Helper-MCP를 사용하며, 사용자 요청 없이는 쓰기 작업을 하지 않는다.

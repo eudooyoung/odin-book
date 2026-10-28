@@ -2,16 +2,16 @@
 
 ## 0. Overview
 
-This project is a simple text-based SNS similar to X or Threads.
+The main purposes of this project:
 
-## 1. Common Rules
+- Learn to build a simple text-based SNS similar to X or Threads.
+- Learn NestJS.
+- Sharpen TanStack React Query and Tailwind CSS skills.
+- Learn to build AWS cloud infrasturcture.
 
-- Unauthenticated users can only access the login and registration pages.
-- Every profile and post is public to authenticated users.
+## 1. Functional Requirements
 
-## 2. Functional Requirements
-
-### 2.1 Authentication
+### 1.1 Authentication
 
 - Users can
   - **create** accounts with email
@@ -54,7 +54,7 @@ rectangle Authentication {
 @enduml
 ```
 
-### 2.2 Profile
+### 1.2 Profile
 
 - Users can
   - **view** their profiles.
@@ -81,11 +81,11 @@ Member --> UpdateProfile
 @enduml
 ```
 
-### 2.3 User Discovery
+### 1.3 User Discovery
 
 - Users can
   - **view** all users.
-  - **search for** users.
+  - **search for** other users.
 
 ```plantuml
 @startuml
@@ -104,7 +104,7 @@ Member --> SearchUsers
 @enduml
 ```
 
-### 2.4 Follow
+### 1.4 Follow
 
 - Users can
   - **send** follow requests to other users.
@@ -148,7 +148,7 @@ Member --> Unfollow
 @enduml
 ```
 
-### 2.5 Post
+### 1.5 Post
 
 - Users can
   - **create** posts.
@@ -174,7 +174,7 @@ rectangle Post {
 @enduml
 ```
 
-### 2.6 Like
+### 1.6 Like
 
 - Users can
   - **give** likes on posts.
@@ -193,7 +193,7 @@ rectangle Like {
 @enduml
 ```
 
-### 2.7 Comment
+### 1.7 Comment
 
 - Users can
   - **leave** comments on posts.
@@ -210,31 +210,27 @@ actor "Authenticated User" as Member
 rectangle Comment {
   Member --> (Leave Comments on Posts)
   Member --> (View Comments on Posts)
-  Member --> (Edit Their Comments)
-  Member --> (Delete Their Comments)
+  Member --> (Edit Comments)
+  Member --> (Delete Comments)
 }
 @enduml
 ```
 
-## 3 Business Rules
+## 2. Priorities
 
-### 3.1 Authentication
+- ### P0: Very Basic
+  - Email authentication
+  - Profile
+  - User discovery
+  - Post CRUD
 
-- Email addresses must be unique.
-- Passwords must be between 15 and 128 characters long.
-- Passwords can contain any characters, including spaces.
-- Users can arrange multiple social media accounts to be logged in.
-- Authenticated users can manage social media accounts access.
-- There must be at least one login method.
+- ### P1: Make SNS
+  - Follow
+  - Home feed
+  - Like
+  - Comment
 
-### 3.2 Profile
-
-- The first registration with a social media retrieves display name and profile image from the service.
-- If a social media doesn't provide data, use default value.
-- User can confirm and edit the retrived data to complete registration.
-- Profile ID is generated automatically.
--
-
-```
-
-```
+- ### P2: Advanced Account Management
+  - Social authentication
+  - Social account connection management
+  - Deactivate & reactivate user account
