@@ -190,6 +190,7 @@ rectangle Like {
   Member --> (Give Likes on Posts)
   Member --> (Cancel Likes on Posts)
 }
+
 @enduml
 ```
 
@@ -213,6 +214,7 @@ rectangle Comment {
   Member --> (Edit Comments)
   Member --> (Delete Comments)
 }
+
 @enduml
 ```
 
@@ -234,3 +236,31 @@ rectangle Comment {
   - Social authentication
   - Social account connection management
   - Deactivate & reactivate user account
+
+## 3. Data Model
+
+```mermaid
+erDiagram
+    User ||--|| Profile: has
+    User ||..o{ Post: writes
+
+    User {
+        Number id PK
+        String email UK
+        String passwordHash
+        Date createdAt
+    }
+    Profile{
+        Number userId PK, FK
+        String handle UK
+        String imageAddress
+        String displayName
+        String bio
+    }
+    Post {
+        Number id PK
+        Number authorId FK
+        String content
+        Date createdAt
+    }
+```
