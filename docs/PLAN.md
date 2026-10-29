@@ -7,7 +7,8 @@ The main purposes of this project:
 - Learn to build a simple text-based SNS similar to X or Threads.
 - Learn NestJS.
 - Sharpen TanStack React Query and Tailwind CSS skills.
-- Learn to build AWS cloud infrasturcture.
+- Learn to use Docker.
+- Learn to build AWS cloud infrastructure.
 
 ## 1. Functional Requirements
 
@@ -264,3 +265,24 @@ erDiagram
         Date createdAt
     }
 ```
+
+## 4. Technology Stacks
+
+- **Backend**: NestJS + TypeScript
+- **Database**: PostgreSQL / **ORM**: Prisma
+- **Frontend**: React, TanStack Query, Tailwind CSS
+- **Testing**: Vitest, Supertest
+- **Repository**: Monorepo (`backend/`, `frontend/`), with independent builds/deployments
+- **Local development**: PostgreSQL via Docker Compose; backend/frontend run locally
+- **Deployment direction**: Learn Docker containerization and AWS deployment; concrete AWS services and architecture to be chosen later
+
+## 5. Phases
+
+### P0
+
+- Set up monorepo, NestJS/React projects, PostgreSQL (Docker Compose), and test environment
+- Email authentication·login·logout
+- Profile view·update
+- User list view·search
+- Post CRUD
+- Review
