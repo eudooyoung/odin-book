@@ -9,7 +9,8 @@
   "scripts": {
     "build": "nest build",
     "deploy": "nest deploy",
-    "format": "vp fmt \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",

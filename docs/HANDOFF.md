@@ -8,7 +8,7 @@
 - 과제: https://www.theodinproject.com/lessons/node-path-nodejs-odin-book
 - 로컬 경로: `/home/eudooyoung/repos/odin/full-stack-javascript/nodejs/odin-social-media`
 - **GPT-Helper-MCP로 `docs/PLAN.md` 최신본을 먼저 읽을 것.** PLAN이 기준 문서(SSOT)이며, HANDOFF는 배경과 진행 맥락이다. 사용자가 파일을 직접 수정하므로 과거 대화 내용보다 현재 파일을 우선한다.
-- 사전 계획(0~5장)은 P0 착수에 필요한 수준으로 작성 완료. **애플리케이션 코드는 아직 작성하지 않았으며 다음 세션은 P0 Setup부터 시작한다.**
+- 사전 계획(0~5장)은 P0 착수에 필요한 수준으로 작성 완료. **NestJS/React 스캐폴딩과 Vite+ 도입까지 진행함. 다음 작업은 프론트엔드 검증 결과 확인 후 PostgreSQL Docker Compose 및 Prisma 연결이다.**
 
 ## 현재 PLAN 상태 (최신 파일 확인)
 
@@ -51,7 +51,18 @@
 - **AWS**: 배포·인프라 학습 목표. ECR/ECS 등은 후보일 뿐이며 실제 서비스 구성은 아직 확정하지 않음.
 - **아키텍처**: NestJS의 Module/DI가 아직 익숙하지 않아 상세 구조를 미리 확정하지 않음. 첫 기능을 구현하면서 이해하고 결정.
 - **P0 진행 순서**: Setup → Email authentication/login/logout → Profile view/update → User list/search → Post CRUD → Review.
-- 기존 `PLAN.md`는 최종 표제로 `4. Technology Stacks`, `5. Phases`를 사용함. 문서 구조를 새로 바꾸지 말 것.
+- `PLAN.md`의 최종 표제는 `4. Technology Stacks`, `5. Phases`. 현재 4장은 기술 스택 목록, 5장은 P0 작업 순서만 간단히 기술한다. 문서 구조를 요청 없이 바꾸지 말 것.
+
+## 구현 진행 현황 (2026-10-29)
+
+- 저장소: https://github.com/eudooyoung/odin-book — `main`에 초기 문서 작업 PR #1 병합 완료. 로컬에서는 P0 Setup 작업 진행 중. 현재 Git 브랜치·커밋 여부는 새 세션에서 확인할 것.
+- 디렉터리: 루트에 `.git/`, `docs/`, `backend/`, `frontend/`. **npm workspaces를 도입하지 않고**, 백엔드·프론트엔드에서 각각 `package.json`, `package-lock.json`, `node_modules`를 관리하기로 최종 결정함.
+- Backend: NestJS 12, TypeScript 6, ESM, Supertest. `backend/`에 Nest CLI로 스캐폴딩 완료. 빌드/단위 테스트/E2E/Lint는 사용자 보고상 통과함(기본 생성 직후 및 Vite+ 마이그레이션 직후). 이후 테스트 설정 통합에 대한 재실행 결과는 아직 확인하지 않음.
+- Frontend: React 19 + TypeScript 7 + Vite+ 1.4.0 `react-ts` 템플릿으로 생성. 실제 `src/App.tsx`, `src/main.tsx`, `@vitejs/plugin-react` 및 React 의존성을 로컬 MCP로 확인. **최초 시도는 Vanilla TypeScript였으나 React 템플릿으로 다시 생성하여 교체 완료.**
+- Vite+: 양쪽 프로젝트에서 사용. 백엔드는 기존 Oxlint·Vitest·Prettier 구성을 Vite+의 Oxlint·Vitest 5·Oxfmt로 전환. `backend/vite.config.ts`에 단위(`unit`)·E2E(`e2e`) 테스트 프로젝트, Lint, Format 설정 통합. 기존 `vitest.config.ts`, `vitest.config.e2e.ts`는 삭제됨. NestJS의 빌드/실행은 Nest CLI 유지.
+- Frontend 설정: `frontend/vite.config.ts`에 React 플러그인과 Lint/Format 포함. `package.json`에 `dev`, `build`, `lint`, `format` (`vp fmt src/`), `format:check` (`vp fmt --check`), `preview` 스크립트가 있음. 프론트엔드는 아직 템플릿 그대로이며 TanStack Query, Tailwind CSS, 테스트 환경은 미설치.
+- **검증 상태:** 프론트엔드 파일 구조 및 설정은 정적으로 검토했으며 특이 문제 없음. 실제 `npm run build`, `npm run lint`, `npm run format:check`, `npm run dev` 실행 결과는 아직 사용자에게서 확인하지 못함. 명령 실행 없이 통과했다고 단정하지 말 것.
+- PostgreSQL Docker Compose, Prisma 연결 및 DB 검증은 아직 착수하지 않음. 애플리케이션 기능 구현도 아직 시작하지 않음.
 
 ## 개발 방식 논의 요약
 
@@ -61,14 +72,14 @@
 - TDD와 자동 테스트·코드 리뷰를 유지하되 각 작업에서 누가 어떤 코드를 직접 작성할지는 유연하게 정함. Formal Verification·복잡한 멀티에이전트 자동화는 현재 도입하지 않음.
 - 사전 설계는 현재 수준으로 충분. 별도의 Business Rules 문서·테이블 정의서·전체 P1/P2 모델을 미리 만들지 않음.
 
-## 다음 세션의 최우선 작업: P0 Setup
+## 다음 세션의 최우선 작업: P0 Setup 이어서
 
-1. GPT-Helper-MCP로 `docs/PLAN.md`와 `docs/HANDOFF.md` 최신본을 읽고 실제 저장소 구조를 확인한다.
-2. `backend/`, `frontend/` 기반 모노레포로 시작한다. 별도 워크스페이스 도구는 필요성이 생길 때 검토한다.
-3. NestJS/React 프로젝트 초기화, 로컬 PostgreSQL용 Docker Compose, Prisma 연결, Vitest+Supertest 테스트 환경을 구성한다.
-4. 초기 빌드/테스트 및 DB 연결 검증까지 진행한다. 새 프레임워크의 Module/DI 등은 실제 설정과 함께 설명하고, 구조를 불필요하게 과설계하지 않는다.
-5. Setup이 완료되면 Email authentication 기능으로 넘어간다. 사용자의 동의 없이 인프라·인증·API 정책을 확정하거나 과도한 구현 계획을 먼저 작성하지 않는다.
-6. `PLAN.md`와 `HANDOFF.md`는 **사용자가 명시적으로 요청한 경우에만 수정**한다. 이번 세션에서는 문서 업데이트 요청을 받아 반영했다.
+1. GPT-Helper-MCP로 `docs/PLAN.md`와 `docs/HANDOFF.md` 최신본 및 로컬 소스 구조를 확인한다. PLAN이 SSOT.
+2. 프론트엔드의 `npm run build`, `npm run lint`, `npm run format:check`, `npm run dev` 결과를 확인한다. 필요하면 백엔드의 테스트 설정 통합 후 빌드·단위·E2E 테스트를 재검증한다.
+3. 로컬 PostgreSQL을 위한 Docker Compose 구성 후 DB 기동과 접속을 확인한다.
+4. NestJS 백엔드에 Prisma를 연결하고 최소한의 DB 접속·테스트 검증까지 진행한다. ORM/DB 스키마 세부사항은 첫 기능 구현에 필요한 범위로 다룬다.
+5. Setup이 끝나면 P0 Email authentication으로 이동. 정책과 API 계약은 해당 기능 착수 시 결정하고, 사용자와 학습 범위·Codex 위임 범위를 조율한다.
+6. **`PLAN.md`와 `HANDOFF.md`는 사용자가 명시적으로 요청할 때만 수정**한다.
 
 ## 협업 주의사항
 
