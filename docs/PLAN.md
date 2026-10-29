@@ -277,7 +277,7 @@ erDiagram
 
 ### P0
 
-- Set up dependencies, PostgreSQL (Docker Compose), and test environment
+- **Set up**: scaffold NestJS·React App, PostgreSQL (Docker Compose), and test environment
 - Email authentication·login·logout
 - Profile view·update
 - User list view·search
