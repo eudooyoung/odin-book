@@ -272,15 +272,12 @@ erDiagram
 - **Database**: PostgreSQL / **ORM**: Prisma
 - **Frontend**: React, TanStack Query, Tailwind CSS
 - **Testing**: Vitest, Supertest
-- **Repository**: Monorepo (`backend/`, `frontend/`), with independent builds/deployments
-- **Local development**: PostgreSQL via Docker Compose; backend/frontend run locally
-- **Deployment direction**: Learn Docker containerization and AWS deployment; concrete AWS services and architecture to be chosen later
 
 ## 5. Phases
 
 ### P0
 
-- Set up monorepo, NestJS/React projects, PostgreSQL (Docker Compose), and test environment
+- **Set up**: scaffold NestJS·React App, PostgreSQL (Docker Compose), and test environment
 - Email authentication·login·logout
 - Profile view·update
 - User list view·search
