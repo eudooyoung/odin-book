@@ -24,6 +24,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    fileParallelism: false,
     projects: [
       { test: { name: "unit", include: ["**/*.spec.ts"] } },
       { test: { name: "e2e", include: ["**/*.e2e-spec.ts"] } },

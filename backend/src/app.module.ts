@@ -5,7 +5,13 @@ import { AppService } from "./app.service.js";
 import { PrismaModule } from "./prisma/prisma.module.js";
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: process.env["NODE_ENV"] === "test" ? ".env.test" : ".env",
+    }),
+    PrismaModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

@@ -28,6 +28,15 @@ describe("Application setup (e2e)", () => {
     expect(result).toBe(1);
   });
 
+  it("connect to the test db", async () => {
+    const prismaService: PrismaService = app.get(PrismaService);
+    const [{ result }] = await prismaService.$queryRaw<
+      { result: string }[]
+    >`SELECT current_database() AS result`;
+
+    expect(result).toBe("odin_book_test");
+  });
+
   afterEach(async () => {
     await app.close();
   });
