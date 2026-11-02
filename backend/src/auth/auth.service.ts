@@ -1,4 +1,5 @@
-import { Injectable } from "@nestjs/common";
+import { ConflictException, Injectable } from "@nestjs/common";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { hash } from "argon2";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { type RegisterDto } from "./register.dto.js";
@@ -10,9 +11,19 @@ export class AuthService {
   async register(registerDto: RegisterDto) {
     const { email, password } = registerDto;
     const passwordHash = await hash(password);
-    return await this.prisma.user.create({
-      data: { email, passwordHash },
-      select: { id: true, email: true },
-    });
+    try {
+      return await this.prisma.user.create({
+        data: { email, passwordHash },
+        select: { id: true, email: true },
+      });
+    } catch (error) {
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictException("Email already exists");
+      }
+      throw error;
+    }
   }
 }

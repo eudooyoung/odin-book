@@ -55,6 +55,19 @@ rectangle Authentication {
 @enduml
 ```
 
+#### Email Resgistraion
+
+##### Input Validation
+
+|  Field   | Length(characters) | Rules                     |
+| :------: | :----------------: | ------------------------- |
+|  Email   |      Max 254       | Valid email format        |
+| Password |       15-128       | No character restrictions |
+
+##### Business Rules
+
+- Email must be unique
+
 ### 1.2 Profile
 
 - Users can
@@ -268,7 +281,10 @@ erDiagram
 
 ## 4. Technology Stacks
 
-- **Backend**: NestJS + TypeScript
+- **Backend**:
+  - NestJS + TypeScript
+  - Vite+
+  - Zod, argon2
 - **Database**: PostgreSQL / **ORM**: Prisma
 - **Frontend**: React, TanStack Query, Tailwind CSS
 - **Testing**: Vitest, Supertest

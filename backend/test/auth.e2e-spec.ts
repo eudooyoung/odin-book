@@ -1,4 +1,7 @@
-import type { INestApplication } from "@nestjs/common";
+import {
+  StandardSchemaValidationPipe,
+  type INestApplication,
+} from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 import request from "supertest";
 import { App } from "supertest/types.js";
@@ -15,6 +18,7 @@ describe("Authentication (e2e)", () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new StandardSchemaValidationPipe());
     await app.init();
     prisma = app.get(PrismaService);
   });
@@ -22,7 +26,7 @@ describe("Authentication (e2e)", () => {
   it("registers a user with email and password", async () => {
     const registration = {
       email: "user@email.com",
-      password: "user-password",
+      password: "valid-password-123",
     };
 
     const { status, body } = await request(app.getHttpServer())
@@ -41,6 +45,63 @@ describe("Authentication (e2e)", () => {
     });
 
     expect(body).toEqual(registered);
+  });
+
+  describe("Registration validation", () => {
+    const registrations = [
+      {
+        case: "invalid email",
+        registration: { email: "user-email", password: "valid-password-123" },
+      },
+      {
+        case: "too long email",
+        registration: {
+          email: `a@${"b".repeat(249)}.com`,
+          password: "valid-password-123",
+        },
+      },
+      {
+        case: "too short password",
+        registration: {
+          email: "user@email.com",
+          password: "pw",
+        },
+      },
+      {
+        case: "too long password",
+        registration: {
+          email: "user@email.com",
+          password: "p".repeat(129),
+        },
+      },
+    ];
+
+    it.each(registrations)(
+      "returns 400 for $case",
+      async ({ registration }) => {
+        const { status } = await request(app.getHttpServer())
+          .post("/auth/register")
+          .send(registration);
+
+        expect(status).toBe(400);
+      },
+    );
+  });
+
+  it("returns 409 for duplicate email", async () => {
+    const registration = {
+      email: "user@email.com",
+      password: "valid-password-123",
+    };
+
+    await request(app.getHttpServer())
+      .post("/auth/register")
+      .send(registration);
+    const { status } = await request(app.getHttpServer())
+      .post("/auth/register")
+      .send(registration);
+
+    expect(status).toBe(409);
   });
 
   afterEach(async () => {

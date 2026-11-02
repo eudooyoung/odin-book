@@ -31,10 +31,10 @@ export default defineConfig({
     ],
   },
   fmt: {
-    singleQuote: true,
+    singleQuote: false,
     trailingComma: "all",
     printWidth: 80,
     sortPackageJson: false,
-    ignorePatterns: [],
+    ignorePatterns: [".agents/**"],
   },
 });
