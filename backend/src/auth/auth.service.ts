@@ -1,14 +1,14 @@
-import { ConflictException, Injectable } from "@nestjs/common";
+import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
-import { hash } from "argon2";
+import { hash, verify } from "argon2";
 import { UsersService } from "../users/users.service.js";
 import { type RegisterDto } from "./register.dto.js";
 
 @Injectable()
 export class AuthService {
   constructor(private usersService: UsersService) {}
-  async register(registerDto: RegisterDto) {
-    const { email, password } = registerDto;
+
+  async register({ email, password }: RegisterDto) {
     const passwordHash = await hash(password);
     try {
       return await this.usersService.create({ email, passwordHash });
@@ -18,5 +18,18 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  async validateUser({ email, password }: { email: string; password: string }) {
+    const result = await this.usersService.findByEmail(email);
+    if (result === null) {
+      throw new UnauthorizedException("Invalid email or password");
+    }
+    const { id, passwordHash } = result;
+    const isVerified = await verify(passwordHash, password);
+    if (!isVerified) {
+      throw new UnauthorizedException("Invalid email or password");
+    }
+    return { id, email };
   }
 }

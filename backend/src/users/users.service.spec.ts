@@ -12,8 +12,6 @@ describe("UsersService", () => {
   };
 
   beforeEach(async () => {
-    vi.clearAllMocks();
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [UsersService, { provide: PrismaService, useValue: prismaMock }],
     }).compile();
@@ -26,24 +24,31 @@ describe("UsersService", () => {
   });
 
   describe(".create", () => {
-    it("creates user with hashed password and returns the public user data", async () => {
+    it("creates user with hashed password", async () => {
       const createUserInput = {
         email: "user@email.com",
         passwordHash: "hashed-password",
       };
-      prismaMock.user.create.mockResolvedValue({
-        id: 1,
-        email: createUserInput.email,
+
+      await service.create(createUserInput);
+
+      expect(prismaMock.user.create).toHaveBeenCalledWith({
+        data: { email: createUserInput.email, passwordHash: createUserInput.passwordHash },
+        select: { id: true, email: true },
       });
+    });
+  });
 
-      const result = await service.create(createUserInput);
+  describe(".findByEmail", () => {
+    it("finds user data with email", async () => {
+      const email = "user@email.com";
 
-      expect(prismaMock.user.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: { email: createUserInput.email, passwordHash: createUserInput.passwordHash },
-        }),
-      );
-      expect(result).toEqual({ id: 1, email: createUserInput.email });
+      await service.findByEmail(email);
+
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email },
+        select: { id: true, passwordHash: true },
+      });
     });
   });
 });

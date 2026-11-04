@@ -24,7 +24,7 @@ describe("AuthModule (e2e)", () => {
     it("registers a user with email and password", async () => {
       const registration = {
         email: "user@email.com",
-        password: "valid-password-123",
+        password: "user-password-123",
       };
 
       const { status, body } = await request(app.getHttpServer())
@@ -49,13 +49,13 @@ describe("AuthModule (e2e)", () => {
       const registrations = [
         {
           case: "invalid email",
-          registration: { email: "user-email", password: "valid-password-123" },
+          registration: { email: "user-email", password: "user-password-123" },
         },
         {
           case: "too long email",
           registration: {
             email: `a@${"b".repeat(249)}.com`,
-            password: "valid-password-123",
+            password: "user-password-123",
           },
         },
         {
@@ -82,7 +82,7 @@ describe("AuthModule (e2e)", () => {
     it("returns 409 for duplicate email", async () => {
       const registration = {
         email: "user@email.com",
-        password: "valid-password-123",
+        password: "user-password-123",
       };
       await request(app.getHttpServer()).post("/auth/register").send(registration);
       await request(app.getHttpServer()).post("/auth/register").send(registration).expect(409);
@@ -94,7 +94,7 @@ describe("AuthModule (e2e)", () => {
       const cookies = request.cookies;
       const registration = {
         email: "user@email.com",
-        password: "valid-password-123",
+        password: "user-password-123",
       };
       await request(app.getHttpServer()).post("/auth/register").send(registration);
 
