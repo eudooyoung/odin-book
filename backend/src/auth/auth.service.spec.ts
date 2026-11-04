@@ -2,31 +2,26 @@ import { ConflictException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { hash } from "argon2";
-import { PrismaService } from "../prisma/prisma.service.js";
+import { UsersService } from "../users/users.service.js";
 import { AuthService } from "./auth.service.js";
 import { type RegisterDto } from "./register.dto.js";
 
 vi.mock("argon2", async (importOriginal) => {
   const original = await importOriginal<typeof import("argon2")>();
-  return { ...original, hash: vi.fn() };
+  return { ...original, hash: vi.fn(), verify: vi.fn() };
 });
 
-describe("AuthService", () => {
+describe("AuthService (unit)", () => {
   let service: AuthService;
-  const prismaMock = {
-    user: {
-      create: vi.fn(),
-    },
+  const usersService = {
+    create: vi.fn(),
   };
 
   beforeEach(async () => {
     vi.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AuthService,
-        { provide: PrismaService, useValue: prismaMock },
-      ],
+      providers: [AuthService, { provide: UsersService, useValue: usersService }],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
@@ -36,26 +31,22 @@ describe("AuthService", () => {
     expect(service).toBeDefined();
   });
 
-  describe("Register", () => {
-    it("calls prisma.user.create() with hashed password", async () => {
+  describe(".register", () => {
+    it("hashes password and invokes users service create", async () => {
       const registerDto: RegisterDto = {
         email: "user@email.com",
-        password: "password",
+        password: "valid-password-123",
       };
-      prismaMock.user.create.mockResolvedValue({
-        id: 1,
-        email: registerDto.email,
-      });
-      vi.mocked(hash).mockResolvedValue("hashed");
+      vi.mocked(hash).mockResolvedValue("hashed-password");
+      usersService.create.mockResolvedValue({ id: 1, email: registerDto.email });
 
       const result = await service.register(registerDto);
 
       expect(hash).toHaveBeenCalledWith(registerDto.password);
-      expect(prismaMock.user.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: { email: registerDto.email, passwordHash: "hashed" },
-        }),
-      );
+      expect(usersService.create).toHaveBeenCalledWith({
+        email: registerDto.email,
+        passwordHash: "hashed-password",
+      });
       expect(result).toEqual({ id: 1, email: registerDto.email });
     });
 
@@ -64,16 +55,37 @@ describe("AuthService", () => {
         email: "user@email.com",
         password: "password",
       };
-      prismaMock.user.create.mockRejectedValueOnce(
+      usersService.create.mockRejectedValueOnce(
         new PrismaClientKnownRequestError("violates unique constraint", {
           code: "P2002",
           clientVersion: "test",
         }),
       );
 
-      await expect(service.register(registerDto)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
     });
   });
+
+  /* describe(".login", () => {
+    it("authenticates user with the login request", async () => {
+      const loginDto = {
+        email: "user@email.com",
+        password: "valid-password-123",
+      };
+      prismaMock.user.findUnique.mockResolvedValue({
+        id: 1,
+        email: "user@email.com",
+        passwordHash: "hashed-password",
+      });
+      vi.mocked(verify).mockResolvedValue(true);
+
+      await service.login(loginDto);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { email: loginDto.email },
+        }),
+      );
+      expect(verify).toHaveBeenCalledWith("hashed-password", loginDto.password);
+    });
+  }); */
 });

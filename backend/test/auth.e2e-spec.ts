@@ -1,14 +1,11 @@
-import {
-  StandardSchemaValidationPipe,
-  type INestApplication,
-} from "@nestjs/common";
+import { StandardSchemaValidationPipe, type INestApplication } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 import request from "supertest";
 import { App } from "supertest/types.js";
 import { AppModule } from "../src/app.module.js";
 import { PrismaService } from "../src/prisma/prisma.service.js";
 
-describe("Authentication (e2e)", () => {
+describe("AuthModule (e2e)", () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
 
@@ -23,85 +20,92 @@ describe("Authentication (e2e)", () => {
     prisma = app.get(PrismaService);
   });
 
-  it("registers a user with email and password", async () => {
-    const registration = {
-      email: "user@email.com",
-      password: "valid-password-123",
-    };
+  describe("POST /auth/register", () => {
+    it("registers a user with email and password", async () => {
+      const registration = {
+        email: "user@email.com",
+        password: "valid-password-123",
+      };
 
-    const { status, body } = await request(app.getHttpServer())
-      .post("/auth/register")
-      .send(registration);
+      const { status, body } = await request(app.getHttpServer())
+        .post("/auth/register")
+        .send(registration);
 
-    expect(status).toBe(201);
-    expect(body).toEqual({
-      id: expect.any(Number),
-      email: registration.email,
+      expect(status).toBe(201);
+      expect(body).toEqual({
+        id: expect.any(Number),
+        email: registration.email,
+      });
+
+      const registered = await prisma.user.findUnique({
+        where: { id: body.id },
+        select: { id: true, email: true },
+      });
+
+      expect(body).toEqual(registered);
     });
 
-    const registered = await prisma.user.findUnique({
-      where: { id: body.id },
-      select: { id: true, email: true },
+    describe("Validation", () => {
+      const registrations = [
+        {
+          case: "invalid email",
+          registration: { email: "user-email", password: "valid-password-123" },
+        },
+        {
+          case: "too long email",
+          registration: {
+            email: `a@${"b".repeat(249)}.com`,
+            password: "valid-password-123",
+          },
+        },
+        {
+          case: "too short password",
+          registration: {
+            email: "user@email.com",
+            password: "pw",
+          },
+        },
+        {
+          case: "too long password",
+          registration: {
+            email: "user@email.com",
+            password: "p".repeat(129),
+          },
+        },
+      ];
+
+      it.each(registrations)("returns 400 for $case", async ({ registration }) => {
+        await request(app.getHttpServer()).post("/auth/register").send(registration).expect(400);
+      });
     });
 
-    expect(body).toEqual(registered);
+    it("returns 409 for duplicate email", async () => {
+      const registration = {
+        email: "user@email.com",
+        password: "valid-password-123",
+      };
+      await request(app.getHttpServer()).post("/auth/register").send(registration);
+      await request(app.getHttpServer()).post("/auth/register").send(registration).expect(409);
+    });
   });
 
-  describe("Registration validation", () => {
-    const registrations = [
-      {
-        case: "invalid email",
-        registration: { email: "user-email", password: "valid-password-123" },
-      },
-      {
-        case: "too long email",
-        registration: {
-          email: `a@${"b".repeat(249)}.com`,
-          password: "valid-password-123",
-        },
-      },
-      {
-        case: "too short password",
-        registration: {
-          email: "user@email.com",
-          password: "pw",
-        },
-      },
-      {
-        case: "too long password",
-        registration: {
-          email: "user@email.com",
-          password: "p".repeat(129),
-        },
-      },
-    ];
+  describe("POST /auth/login", () => {
+    it("returns AT and RT when login succeeds", async () => {
+      const cookies = request.cookies;
+      const registration = {
+        email: "user@email.com",
+        password: "valid-password-123",
+      };
+      await request(app.getHttpServer()).post("/auth/register").send(registration);
 
-    it.each(registrations)(
-      "returns 400 for $case",
-      async ({ registration }) => {
-        const { status } = await request(app.getHttpServer())
-          .post("/auth/register")
-          .send(registration);
-
-        expect(status).toBe(400);
-      },
-    );
-  });
-
-  it("returns 409 for duplicate email", async () => {
-    const registration = {
-      email: "user@email.com",
-      password: "valid-password-123",
-    };
-
-    await request(app.getHttpServer())
-      .post("/auth/register")
-      .send(registration);
-    const { status } = await request(app.getHttpServer())
-      .post("/auth/register")
-      .send(registration);
-
-    expect(status).toBe(409);
+      const loginInput = registration;
+      await request(app.getHttpServer())
+        .post("/auth/login")
+        .send(loginInput)
+        .expect(204)
+        .expect(cookies.set({ name: "accessToken", options: { httponly: true } }))
+        .expect(cookies.set({ name: "refreshToken", options: { httponly: true } }));
+    });
   });
 
   afterEach(async () => {

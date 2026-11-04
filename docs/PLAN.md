@@ -284,7 +284,7 @@ erDiagram
 - **Backend**:
   - NestJS + TypeScript
   - Vite+
-  - Zod, argon2
+  - Zod, argon2, Passport
 - **Database**: PostgreSQL / **ORM**: Prisma
 - **Frontend**: React, TanStack Query, Tailwind CSS
 - **Testing**: Vitest, Supertest
@@ -294,7 +294,7 @@ erDiagram
 ### P0
 
 - **Set up**: scaffold NestJS·React App, PostgreSQL (Docker Compose), and test environment
-- Email authentication·login·logout
+- **Email authentication**: Registration·login·logout
 - Profile view·update
 - User list view·search
 - Post CRUD
