@@ -1,7 +1,10 @@
 import { ConflictException, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 import { Test, TestingModule } from "@nestjs/testing";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { hash, verify } from "argon2";
+import { createHash, randomBytes } from "node:crypto";
+import { PrismaService } from "../prisma/prisma.service.js";
 import { UsersService } from "../users/users.service.js";
 import { AuthService } from "./auth.service.js";
 import { type RegisterDto } from "./register.dto.js";
@@ -11,18 +14,36 @@ vi.mock("argon2", async (importOriginal) => {
   return { ...original, hash: vi.fn(), verify: vi.fn() };
 });
 
+vi.mock("node:crypto", async (importOriginal) => {
+  const original = await importOriginal<typeof import("node:crypto")>();
+  return { ...original, randomBytes: vi.fn() };
+});
+
 describe("AuthService (unit)", () => {
   let service: AuthService;
   const usersService = {
     create: vi.fn(),
     findByEmail: vi.fn(),
   };
+  const jwtService = {
+    sign: vi.fn(),
+  };
+  const prismaService = {
+    refreshSession: {
+      create: vi.fn(),
+    },
+  };
 
   beforeEach(async () => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AuthService, { provide: UsersService, useValue: usersService }],
+      providers: [
+        AuthService,
+        { provide: UsersService, useValue: usersService },
+        { provide: JwtService, useValue: jwtService },
+        { provide: PrismaService, useValue: prismaService },
+      ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
@@ -95,11 +116,32 @@ describe("AuthService (unit)", () => {
     });
 
     it("throws UnauthroziedException when password isn't verified", async () => {
-      vi.mocked(verify).mockRejectedValue(false);
+      usersService.findByEmail.mockResolvedValue({ id: 1, passwordHash: "hashed-password" });
+      vi.mocked(verify).mockResolvedValue(false);
 
       await expect(
         service.validateUser({ email: "user@email.com", password: "invalid-password-123" }),
       ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe(".login", () => {
+    it("returns JWT AT and Opaque RT, creating a refresh session with the RT hash", async () => {
+      const authUser = { id: 1, email: "user@email.com" };
+      jwtService.sign.mockReturnValue("accessToken");
+      const random = Buffer.alloc(32, 1);
+      const refreshToken = random.toString("base64url");
+      const refreshTokenHash = createHash("sha256").update(refreshToken).digest("hex");
+      vi.mocked(randomBytes).mockImplementation(() => random);
+
+      const result = await service.login(authUser);
+
+      expect(jwtService.sign).toHaveBeenCalledWith({ email: authUser.email, sub: authUser.id });
+      expect(randomBytes).toHaveBeenCalledWith(32);
+      expect(prismaService.refreshSession.create).toHaveBeenCalledWith({
+        data: { userId: authUser.id, tokenHash: refreshTokenHash },
+      });
+      expect(result).toEqual({ accessToken: "accessToken", refreshToken });
     });
   });
 });

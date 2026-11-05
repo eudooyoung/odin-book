@@ -7,39 +7,40 @@
 - 프로젝트: The Odin Project — Odin Book (`odin-social-media`)
 - 로컬 경로: `/home/eudooyoung/repos/courses/odin/full-stack-javascript/nodejs/odin-social-media`
 - **GPT-Helper-MCP로 로컬 `docs/PLAN.md` → `docs/HANDOFF.md` → 필요한 소스 순서로 확인. GitHub부터 확인하지 말 것.**
-- `PLAN.md`가 요구사항·우선순위의 SSOT. HANDOFF는 **현재 상태와 작업 재개에 필요한 맥락만 간결하게** 유지한다. 해결된 오류, 과거 논의 경과, 소스에서 바로 확인 가능한 구현 세부사항은 누적하지 않는다.
+- `PLAN.md`가 요구사항·우선순위의 SSOT. HANDOFF는 진행 상태와 다음 작업에 필요한 맥락만 유지한다.
 
-## 2. 프로젝트 및 개발 방식
+## 2. 개발 방식
 
-- 목표: NestJS 학습을 중심으로 텍스트 SNS 구현. 스택: NestJS·TypeScript·Prisma·PostgreSQL, React, Vitest·Supertest. Docker Compose로 개발/테스트 DB 분리. 상세 목표와 단계는 PLAN 참조.
-- P0 순서: Setup → Email authentication(회원가입·로그인·로그아웃) → Profile → User discovery → Post CRUD.
-- **사용자가 직접 코딩·검증하며 GPT는 설명·코드 리뷰 위주. 명시적 요청 없이는 소스와 문서를 수정하지 말 것.**
-- 기능 단위 TDD: 성공 E2E RED → 단위 테스트 RED → 구현 GREEN → 오류 케이스. API 계약이나 부가 정책을 앞서 과도하게 확정하지 않는다.
-- 사용자의 의견에 자동 동의하거나 반론으로 해석하지 말 것. 판단 근거를 분명히 하고, 기술 설명에는 관련 공식 문서를 링크하며 실제 코드 예시는 명시 요청 시에만 제공.
+- NestJS·TypeScript·Prisma·PostgreSQL, React, Vitest·Supertest. Docker Compose로 개발/테스트 DB 분리.
+- P0: Setup → Email authentication(회원가입·로그인·로그아웃) → Profile → User discovery → Post CRUD.
+- **사용자가 직접 구현·검증, GPT는 공식 문서 안내·설명·리뷰 중심. 명시적으로 요청받기 전에는 실제 코드 예시를 작성하거나 소스·문서를 수정하지 말 것.**
+- TDD: 성공 E2E RED → 단위 테스트 RED → GREEN → 실패 케이스. API 계약이나 부가 정책을 선제 확정하지 않는다.
+- 판단 근거를 명확히 하고 자동 동의·과잉 제안을 피한다. 기술 설명에는 공식 문서 링크를 제공한다.
 
-## 3. 현재 상태
+## 3. 현재 구현 및 검증
 
-- **완료:** P0 Setup, 독립된 개발/테스트 PostgreSQL DB, 이메일 회원가입(성공·입력 검증·이메일 중복 처리).
-- **회원가입 리팩터링 완료:** `AuthController → AuthService → UsersService → PrismaService`. `AuthService.register()`에서 비밀번호 해싱·P2002→409 변환, `UsersService.create()`에서 사용자 DB 생성 및 공개 정보 반환. 모듈 import/export 연결 완료.
-- **검증:** 회원가입 관련 단위 테스트·E2E 테스트 GREEN은 사용자 확인. **전체 테스트 스위트 GREEN은 아님**(로그인 E2E는 의도된 RED). 최신 format/lint/build 검증은 미확인.
-- **미완성:** 로그인·로그아웃. `UsersService.findByEmail()` 미구현; 로그인 단위 테스트는 주석 처리. `POST /auth/login` 엔드포인트 및 Passport/JWT/쿠키 처리는 미구현.
-- 현재 Prisma에는 `User`만 구현. `Profile`은 이후 P0 단계에서 추가하며, PLAN의 ERD는 목표 모델이다.
+- **완료:** P0 Setup, 이메일 회원가입(검증·중복 409 포함), `UsersService.findByEmail()`, `AuthService.validateUser()`.
+- **인증 연결:** Passport `LocalStrategy`(`usernameField: "email"`), `AuthGuard("local")` 적용한 `POST /auth/login`. `req.user`는 Express Request 확장 타입으로 지정.
+- **로그인 HTTP 204 확인**(사용자 확인). 로그인 성공 E2E에는 204와 `accessToken`·`refreshToken` HttpOnly 쿠키 검증이 작성되어 있으나, **토큰 발급/쿠키 설정 미구현으로 전체 E2E는 아직 GREEN이 아님**.
+- **미완성:** `AuthService.login()`, JWT/RT 발급, RT 저장소, 쿠키, `JwtStrategy`, 로그인 완료 후 로그아웃. 현재 Prisma 모델은 `User`만 있음.
+- **테스트 주의:** 현재 `auth.service.spec.ts`의 비밀번호 불일치 케이스는 `verify.mockRejectedValue(false)`를 사용하고 `findByEmail` 반환값을 해당 테스트에서 설정하지 않음. `vi.clearAllMocks()`는 Mock 구현을 초기화하지 않아 직전 `null` 설정으로 **잘못된 경로에서 401이 나와도 GREEN이 될 가능성**이 있음. 다음 세션에서 실제 비밀번호 불일치 경로 검증하도록 수정·재확인 필요.
+- 회원가입 테스트 GREEN은 사용자 확인. 전체 lint/build/테스트 GREEN은 확인되지 않음.
 
-## 4. 로그인 결정 사항
+## 4. 인증 설계 현황
 
-- **Passport LocalStrategy + JwtStrategy**, JWT Access/Refresh Token, **HttpOnly 쿠키** 사용하기로 결정.
-- 로그인 성공 E2E(`backend/test/auth.e2e-spec.ts`)는 이미 작성되어 **RED 확인**. 회원가입 후 로그인하여 HTTP **204**, `accessToken`·`refreshToken` 쿠키 존재 및 `HttpOnly` 속성 검증.
-- JWT 만료 시간·Payload·Refresh Token 저장/폐기 방식과 로그인 실패 정책은 아직 미결정. 필요한 구현 단계에서 논의한다.
+- **확정 방향:** AT는 JWT(`sub` 사용자 ID 및 이메일), RT는 Opaque(암호학적 난수)로 발급. RT를 일회성으로 관리하고 해시 저장·Rotation·폐기를 지원하는 상태 기반 방식 지향. 브라우저에는 HttpOnly 쿠키, 로그인 성공 응답은 204.
+- **미결정:** `@nestjs/authentication` 패키지 도입 vs Passport 유지 + 직접 구현. **다음 세션에서 공식 문서를 확인하여 실제 지원 범위·버전 안정성·현재 Passport와의 통합 방식 비교 후 결정**. 기존 Passport 코드를 당장 교체하지 말 것.
+- **추후 결정:** AT/RT 만료 시간, RT 저장 데이터 모델, 세션 절대 만료, 갱신·재사용 감지·폐기 정책, 쿠키 세부 속성.
+- 현재 `AuthService.login()` 단위 테스트는 JWT 두 개를 가정한 미완성 초안만 있음. Opaque RT 결정과 인증 패키지 검토 결과에 맞춰 다시 설계할 것.
 
 ## 5. 다음 작업
 
-1. `UsersService.findByEmail()` 단위 테스트 RED → 구현 GREEN.
-2. Passport LocalStrategy 흐름에 맞게 `AuthService` 사용자 검증 책임과 단위 테스트 정리.
-3. JWT 발급·쿠키 설정 구현 → 기존 로그인 E2E GREEN 확인 → 로그인 오류 케이스, 이후 로그아웃.
-4. **회원가입 리팩터링은 완료된 작업**으로 취급하고, 로그인 미구현 테스트를 회원가입 리팩터링의 결함으로 평가하지 않는다.
+1. `@nestjs/authentication`과 현재 Passport 방식의 역할·통합·학습 가치를 **공식 자료로 검증**한 뒤 채택 여부 논의.
+2. 위 테스트 주의 사항을 수정하고 실패 케이스가 의도한 경로로 검증되는지 확인.
+3. 선택한 설계에 맞춰 `AuthService.login()` TDD → AT/RT 발급·최소 저장 모델 → 쿠키 설정 → 기존 로그인 E2E GREEN.
+4. 이후 Refresh/Logout의 Rotation·폐기 및 세션 만료 정책을 단계적으로 다룬다.
 
 ## 6. HANDOFF 유지 원칙
 
-- 새 세션에 필요한 **진행 상태·확정된 결정·미결정 사항·바로 다음 작업·협업 규칙만** 기록한다.
-- PLAN이나 소스와 중복되는 설명, 지나간 디버깅, 해결된 결함, 날짜별 작업 일지는 삭제하거나 넣지 않는다.
-- 다음 갱신 때도 **분량을 늘리기보다 오래된 내용을 교체·삭제**하여 간결하게 유지한다.
+- 결정·진행 상태·바로 다음 작업만 기록하며, 오래된 내용은 누적하지 말고 교체·삭제한다.
+- PLAN/소스에서 바로 확인 가능한 세부사항이나 해결된 과거 논의는 반복하지 않는다.
