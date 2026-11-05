@@ -255,6 +255,7 @@ rectangle Comment {
 
 ```mermaid
 erDiagram
+    User ||--o{ RefreshSession: has
     User ||--|| Profile: has
     User ||..o{ Post: writes
 
@@ -276,6 +277,11 @@ erDiagram
         Number authorId FK
         String content
         Date createdAt
+    }
+    RefreshSession {
+        Number id PK
+        String tokenHash UK
+        Number userId FK
     }
 ```
 

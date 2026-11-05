@@ -19,26 +19,29 @@
 
 ## 3. 현재 구현 및 검증
 
-- **완료:** P0 Setup, 이메일 회원가입(검증·중복 409 포함), `UsersService.findByEmail()`, `AuthService.validateUser()`.
-- **인증 연결:** Passport `LocalStrategy`(`usernameField: "email"`), `AuthGuard("local")` 적용한 `POST /auth/login`. `req.user`는 Express Request 확장 타입으로 지정.
-- **로그인 HTTP 204 확인**(사용자 확인). 로그인 성공 E2E에는 204와 `accessToken`·`refreshToken` HttpOnly 쿠키 검증이 작성되어 있으나, **토큰 발급/쿠키 설정 미구현으로 전체 E2E는 아직 GREEN이 아님**.
-- **미완성:** `AuthService.login()`, JWT/RT 발급, RT 저장소, 쿠키, `JwtStrategy`, 로그인 완료 후 로그아웃. 현재 Prisma 모델은 `User`만 있음.
-- **테스트 주의:** 현재 `auth.service.spec.ts`의 비밀번호 불일치 케이스는 `verify.mockRejectedValue(false)`를 사용하고 `findByEmail` 반환값을 해당 테스트에서 설정하지 않음. `vi.clearAllMocks()`는 Mock 구현을 초기화하지 않아 직전 `null` 설정으로 **잘못된 경로에서 401이 나와도 GREEN이 될 가능성**이 있음. 다음 세션에서 실제 비밀번호 불일치 경로 검증하도록 수정·재확인 필요.
-- 회원가입 테스트 GREEN은 사용자 확인. 전체 lint/build/테스트 GREEN은 확인되지 않음.
+- **완료:** P0 Setup, 이메일 회원가입(검증·중복 409), `UsersService.findByEmail()`, `AuthService.validateUser()`.
+- **인증 연결:** Passport `LocalStrategy`(`usernameField: "email"`)와 `AuthGuard("local")`로 `POST /auth/login` 검증. 기존 로그인 HTTP 204 확인은 사용자 보고.
+- **로그인 서비스 단위 테스트 GREEN 완료(사용자 확인):** `AuthService.login()`이 `{ email, sub: id }`로 JWT AT 발급, `randomBytes(32).toString("base64url")`로 Opaque RT 생성, SHA-256 `hex` 해시를 `prisma.refreshSession.create()`로 저장한 다음 AT·RT 반환.
+- 단위 테스트는 JWT·DB·난수 생성 호출을 Mocking하고, `Buffer.toString()`·`createHash()`는 실제 실행. 이 접근을 승인했으므로 이유 없이 해시 기대값을 하드코딩하도록 재제안하지 말 것.
+- 비밀번호 불일치 테스트는 `findByEmail` 응답과 `verify.mockResolvedValue(false)`를 설정하도록 수정됨. `beforeEach`는 `vi.resetAllMocks()` 사용. 과거 Mock 누출 문제는 해결.
+- Prisma `RefreshSession` 모델 존재: `id`, `tokenHash @unique`, `userId`, `User`와 관계(`onDelete: Cascade`). 실제 DB 마이그레이션 적용 여부는 새 세션에서 필요 시 확인.
+- **아직 E2E 미완료:** `AuthController.login()`은 현재 `req.user`만 반환하고 `AuthService.login()`·쿠키 설정을 호출하지 않음. 로그인 성공 E2E에는 HTTP 204와 AT/RT HttpOnly 쿠키 검증이 작성되어 있으나 GREEN 미확인.
+- `AuthModule`에 `JwtModule` 미등록, 서명 설정 미완료. 전체 lint/build/E2E GREEN도 미확인.
 
-## 4. 인증 설계 현황
+## 4. 인증 정책과 미결정 사항
 
-- **확정 방향:** AT는 JWT(`sub` 사용자 ID 및 이메일), RT는 Opaque(암호학적 난수)로 발급. RT를 일회성으로 관리하고 해시 저장·Rotation·폐기를 지원하는 상태 기반 방식 지향. 브라우저에는 HttpOnly 쿠키, 로그인 성공 응답은 204.
-- **미결정:** `@nestjs/authentication` 패키지 도입 vs Passport 유지 + 직접 구현. **다음 세션에서 공식 문서를 확인하여 실제 지원 범위·버전 안정성·현재 Passport와의 통합 방식 비교 후 결정**. 기존 Passport 코드를 당장 교체하지 말 것.
-- **추후 결정:** AT/RT 만료 시간, RT 저장 데이터 모델, 세션 절대 만료, 갱신·재사용 감지·폐기 정책, 쿠키 세부 속성.
-- 현재 `AuthService.login()` 단위 테스트는 JWT 두 개를 가정한 미완성 초안만 있음. Opaque RT 결정과 인증 패키지 검토 결과에 맞춰 다시 설계할 것.
+- **선택:** 신규 `@nestjs/authentication` 대신 기존 Passport 유지 + 직접 구현. 기존 구현과 학습 목적에 적합.
+- **확정:** AT는 JWT(사용자 ID `sub`, `email`), RT는 암호학적 난수 기반 Opaque Token(32바이트 → base64url). 서버에는 RT 원본 대신 SHA-256 해시 저장. 브라우저에는 HttpOnly 쿠키, 로그인 성공 HTTP 204.
+- **향후 지향:** RT Rotation·폐기·재사용 감지 가능한 상태 기반 세션.
+- **다음 결정 필요:** JWT 서명 알고리즘/Secret 관리/AT 유효 기간, RT 유효 기간 및 DB 만료 필드, 쿠키 속성·수명. 세션 절대 만료와 구체적인 Rotation·재사용 감지·폐기 규칙은 Refresh/Logout 구현 단계에서 논의 가능.
+- 현재 `RefreshSession`에는 생성·만료 시간이 없음. 로그인 서비스 GREEN을 위해 추가하지 않았으며, RT 만료 검증 구현 전에 정책과 모델을 확정할 것.
 
 ## 5. 다음 작업
 
-1. `@nestjs/authentication`과 현재 Passport 방식의 역할·통합·학습 가치를 **공식 자료로 검증**한 뒤 채택 여부 논의.
-2. 위 테스트 주의 사항을 수정하고 실패 케이스가 의도한 경로로 검증되는지 확인.
-3. 선택한 설계에 맞춰 `AuthService.login()` TDD → AT/RT 발급·최소 저장 모델 → 쿠키 설정 → 기존 로그인 E2E GREEN.
-4. 이후 Refresh/Logout의 Rotation·폐기 및 세션 만료 정책을 단계적으로 다룬다.
+1. **로그인 E2E GREEN 진행:** 먼저 JWT 정책(서명 키·알고리즘·AT 만료)과 필요한 RT/쿠키 정책을 사용자와 논의·결정.
+2. `JwtModule` 설정 및 `AuthController.login()`에 `AuthService.login()` 연결, AT/RT HttpOnly 쿠키 설정.
+3. 기존 로그인 E2E(204·쿠키) 검증을 GREEN으로 만들고 RT 세션의 DB 저장 여부도 확인. 필요 시 개발·테스트 DB 마이그레이션 확인(실행 중인 Docker 컨테이너 재시작 불필요).
+4. 이후 로그인 실패 케이스, Refresh/Logout, RT Rotation·폐기와 만료 정책을 순차적으로 다룬다.
 
 ## 6. HANDOFF 유지 원칙
 

@@ -2,6 +2,8 @@ import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/co
 import { JwtService } from "@nestjs/jwt";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { hash, verify } from "argon2";
+import { createHash, randomBytes } from "node:crypto";
+import { PrismaService } from "../prisma/prisma.service.js";
 import { UsersService } from "../users/users.service.js";
 import { type RegisterDto } from "./register.dto.js";
 
@@ -10,6 +12,7 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private prismaService: PrismaService,
   ) {}
 
   async register({ email, password }: RegisterDto) {
@@ -40,6 +43,13 @@ export class AuthService {
   async login({ id, email }: { id: number; email: string }) {
     const payload = { email, sub: id };
     const accessToken = this.jwtService.sign(payload);
-    return { accessToken };
+    const refreshToken = randomBytes(32).toString("base64url");
+    const refreshTokenHash = createHash("sha256").update(refreshToken).digest("hex");
+
+    await this.prismaService.refreshSession.create({
+      data: { userId: id, tokenHash: refreshTokenHash },
+    });
+
+    return { accessToken, refreshToken };
   }
 }

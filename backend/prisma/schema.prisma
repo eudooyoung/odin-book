@@ -13,8 +13,16 @@ datasource db {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now())
+  id              Int              @id @default(autoincrement())
+  email           String           @unique
+  passwordHash    String
+  createdAt       DateTime         @default(now())
+  refreshSessions RefreshSession[]
+}
+
+model RefreshSession {
+  id        Int    @id @default(autoincrement())
+  tokenHash String @unique
+  userId    Int
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
