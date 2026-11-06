@@ -55,6 +55,33 @@ rectangle Authentication {
 @enduml
 ```
 
+#### Token & Cookie Policy
+
+##### AccessToken
+
+- Format: JWT
+- Payload: sub(user id), email
+- Signing algoritm: HS256
+- Expiration: 15 minutes
+
+##### Opague RefreshToken
+
+- Format: Opaque token
+- Store SHA-256 hash in database
+- Expiration: 7days
+- Used only once, issued every refresh
+- Absolute expiration: 30days from the first issue
+
+##### Cookie
+
+| Attribute | Access Token            | Refresh Token           |
+| --------- | ----------------------- | ----------------------- |
+| httpOnly  | true                    | true                    |
+| secure    | false(dev) / true(prod) | false(dev) / true(prod) |
+| sameSite  | lax                     | lax                     |
+| path      | /                       | /auth                   |
+| maxAge    | 15 minutes              | Up to 7 days            |
+
 #### Email Resgistraion
 
 ##### Input Validation
@@ -290,7 +317,7 @@ erDiagram
 - **Backend**:
   - NestJS + TypeScript
   - Vite+
-  - Zod, argon2, Passport
+  - Zod, argon2, Passport, JWT
 - **Database**: PostgreSQL / **ORM**: Prisma
 - **Frontend**: React, TanStack Query, Tailwind CSS
 - **Testing**: Vitest, Supertest

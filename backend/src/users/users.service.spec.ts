@@ -13,7 +13,10 @@ describe("UsersService", () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [
+        UsersService,
+        { provide: PrismaService, useValue: prismaMock },
+      ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
@@ -33,7 +36,10 @@ describe("UsersService", () => {
       await service.create(createUserInput);
 
       expect(prismaMock.user.create).toHaveBeenCalledWith({
-        data: { email: createUserInput.email, passwordHash: createUserInput.passwordHash },
+        data: {
+          email: createUserInput.email,
+          passwordHash: createUserInput.passwordHash,
+        },
         select: { id: true, email: true },
       });
     });

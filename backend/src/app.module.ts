@@ -13,7 +13,9 @@ import { UsersModule } from "./users/users.module.js";
   providers: [AppService],
 })
 export class AppModule {
-  static withConfig({ ignoreEnvFile } = { ignoreEnvFile: false }): DynamicModule {
+  static withConfig(
+    { ignoreEnvFile } = { ignoreEnvFile: false },
+  ): DynamicModule {
     return {
       module: AppModule,
       imports: [
@@ -23,7 +25,8 @@ export class AppModule {
             DATABASE_URL: z.string().min(1),
             JWT_SECRET: z.string().min(1),
           }),
-          envFilePath: process.env["NODE_ENV"] === "test" ? ".env.test" : ".env",
+          envFilePath:
+            process.env["NODE_ENV"] === "test" ? ".env.test" : ".env",
           ignoreEnvFile,
         }),
       ],

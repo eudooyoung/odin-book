@@ -1,4 +1,7 @@
-import { StandardSchemaValidationPipe, type INestApplication } from "@nestjs/common";
+import {
+  StandardSchemaValidationPipe,
+  type INestApplication,
+} from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 import request from "supertest";
 import { App } from "supertest/types.js";
@@ -74,9 +77,15 @@ describe("AuthModule", () => {
         },
       ];
 
-      it.each(registrations)("returns 400 for $case", async ({ registration }) => {
-        await request(app.getHttpServer()).post("/auth/register").send(registration).expect(400);
-      });
+      it.each(registrations)(
+        "returns 400 for $case",
+        async ({ registration }) => {
+          await request(app.getHttpServer())
+            .post("/auth/register")
+            .send(registration)
+            .expect(400);
+        },
+      );
     });
 
     it("returns 409 for duplicate email", async () => {
@@ -84,27 +93,64 @@ describe("AuthModule", () => {
         email: "user@email.com",
         password: "user-password-123",
       };
-      await request(app.getHttpServer()).post("/auth/register").send(registration);
-      await request(app.getHttpServer()).post("/auth/register").send(registration).expect(409);
+      await request(app.getHttpServer())
+        .post("/auth/register")
+        .send(registration);
+      await request(app.getHttpServer())
+        .post("/auth/register")
+        .send(registration)
+        .expect(409);
     });
   });
 
   describe("POST /auth/login", () => {
-    it("returns AT and RT when login succeeds", async () => {
-      const cookies = request.cookies;
+    it("sets AT and RT cookies with expected options", async () => {
+      const { cookies } = request;
       const registration = {
         email: "user@email.com",
         password: "user-password-123",
       };
-      await request(app.getHttpServer()).post("/auth/register").send(registration);
+      await request(app.getHttpServer())
+        .post("/auth/register")
+        .send(registration);
 
       const loginInput = registration;
       await request(app.getHttpServer())
         .post("/auth/login")
         .send(loginInput)
         .expect(204)
-        .expect(cookies.set({ name: "accessToken", options: { httponly: true } }))
-        .expect(cookies.set({ name: "refreshToken", options: { httponly: true } }));
+        .expect(
+          cookies(null, (_, { cookies }) => {
+            const cookie = cookies.find((c) => c.name === "accessToken");
+            if (!cookie) {
+              throw new Error("accessToken cookie was not set");
+            }
+            expect(cookie.options).toMatchObject({
+              httponly: true,
+              samesite: "Lax",
+              path: "/",
+              "max-age": `${15 * 60}`,
+            });
+            expect(cookie.options).not.toHaveProperty("secure");
+            return true;
+          }),
+        )
+        .expect(
+          cookies(null, (_, { cookies }) => {
+            const cookie = cookies.find((c) => c.name === "refreshToken");
+            if (!cookie) {
+              throw new Error("refreshToken cookie was not set");
+            }
+            expect(cookie.options).toMatchObject({
+              httponly: true,
+              samesite: "Lax",
+              path: "/auth",
+              "max-age": `${7 * 24 * 60 * 60}`,
+            });
+            expect(cookie.options).not.toHaveProperty("secure");
+            return true;
+          }),
+        );
     });
   });
 

@@ -60,7 +60,10 @@ describe("AuthService (unit)", () => {
         password: "user-password-123",
       };
       vi.mocked(hash).mockResolvedValue("hashed-password");
-      usersService.create.mockResolvedValue({ id: 1, email: registerDto.email });
+      usersService.create.mockResolvedValue({
+        id: 1,
+        email: registerDto.email,
+      });
 
       const result = await service.register(registerDto);
 
@@ -84,7 +87,9 @@ describe("AuthService (unit)", () => {
         }),
       );
 
-      await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
+      await expect(service.register(registerDto)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -111,16 +116,25 @@ describe("AuthService (unit)", () => {
       usersService.findByEmail.mockResolvedValue(null);
 
       await expect(
-        service.validateUser({ email: "unknown-user@email.com", password: "user-password-123" }),
+        service.validateUser({
+          email: "unknown-user@email.com",
+          password: "user-password-123",
+        }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
     it("throws UnauthroziedException when password isn't verified", async () => {
-      usersService.findByEmail.mockResolvedValue({ id: 1, passwordHash: "hashed-password" });
+      usersService.findByEmail.mockResolvedValue({
+        id: 1,
+        passwordHash: "hashed-password",
+      });
       vi.mocked(verify).mockResolvedValue(false);
 
       await expect(
-        service.validateUser({ email: "user@email.com", password: "invalid-password-123" }),
+        service.validateUser({
+          email: "user@email.com",
+          password: "invalid-password-123",
+        }),
       ).rejects.toThrow(UnauthorizedException);
     });
   });
@@ -131,12 +145,17 @@ describe("AuthService (unit)", () => {
       jwtService.sign.mockReturnValue("accessToken");
       const random = Buffer.alloc(32, 1);
       const refreshToken = random.toString("base64url");
-      const refreshTokenHash = createHash("sha256").update(refreshToken).digest("hex");
+      const refreshTokenHash = createHash("sha256")
+        .update(refreshToken)
+        .digest("hex");
       vi.mocked(randomBytes).mockImplementation(() => random);
 
       const result = await service.login(authUser);
 
-      expect(jwtService.sign).toHaveBeenCalledWith({ email: authUser.email, sub: authUser.id });
+      expect(jwtService.sign).toHaveBeenCalledWith({
+        email: authUser.email,
+        sub: authUser.id,
+      });
       expect(randomBytes).toHaveBeenCalledWith(32);
       expect(prismaService.refreshSession.create).toHaveBeenCalledWith({
         data: { userId: authUser.id, tokenHash: refreshTokenHash },

@@ -1,6 +1,15 @@
-import { Body, Controller, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { type Request } from "express";
+import { type Request, type Response } from "express";
+import { getAuthCookieOptions } from "./auth-cookie-options.js";
 import { AuthService } from "./auth.service.js";
 import { type RegisterDto, registerSchema } from "./register.dto.js";
 
@@ -22,10 +31,18 @@ export class AuthController {
     return this.authService.register(registerDto);
   }
 
-  @UseGuards(AuthGuard("local"))
   @Post("login")
+  @UseGuards(AuthGuard("local"))
   @HttpCode(204)
-  async login(@Req() req: AuthRequest) {
-    return req.user;
+  async login(
+    @Req() req: AuthRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { accessToken, refreshToken } = await this.authService.login(
+      req.user,
+    );
+    const options = getAuthCookieOptions(process.env.NODE_ENV);
+    res.cookie("accessToken", accessToken, options.accessToken);
+    res.cookie("refreshToken", refreshToken, options.refreshToken);
   }
 }

@@ -18,12 +18,17 @@ describe("Application", () => {
   });
 
   it("/ (GET)", () => {
-    return request(app.getHttpServer()).get("/").expect(200).expect("Hello World!");
+    return request(app.getHttpServer())
+      .get("/")
+      .expect(200)
+      .expect("Hello World!");
   });
 
   it("executes a query through PrismaService", async () => {
     const prismaService: PrismaService = app.get(PrismaService);
-    const [{ result }] = await prismaService.$queryRaw<{ result: number }[]>`SELECT 1 AS result`;
+    const [{ result }] = await prismaService.$queryRaw<
+      { result: number }[]
+    >`SELECT 1 AS result`;
 
     expect(result).toBe(1);
   });
