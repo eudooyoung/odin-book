@@ -5,13 +5,13 @@ import { App } from "supertest/types.js";
 import { AppModule } from "../src/app.module.js";
 import { PrismaService } from "../src/prisma/prisma.service.js";
 
-describe("AuthModule (e2e)", () => {
+describe("AuthModule", () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule.withConfig()],
     }).compile();
 
     app = moduleFixture.createNestApplication();
