@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
 import { hash, verify } from "argon2";
@@ -24,10 +20,7 @@ export class AuthService {
     try {
       return await this.usersService.create({ email, passwordHash });
     } catch (error) {
-      if (
-        error instanceof PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === "P2002") {
         throw new ConflictException("Email already exists");
       }
       throw error;
@@ -51,9 +44,7 @@ export class AuthService {
     const payload = { email, sub: id };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = randomBytes(32).toString("base64url");
-    const refreshTokenHash = createHash("sha256")
-      .update(refreshToken)
-      .digest("hex");
+    const refreshTokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
     await this.prismaService.refreshSession.create({
       data: { userId: id, tokenHash: refreshTokenHash },
