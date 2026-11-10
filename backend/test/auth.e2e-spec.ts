@@ -178,7 +178,7 @@ describe("AuthModule", () => {
   });
 
   describe("POST /auth/refresh", () => {
-    it("rotates RT", async () => {
+    it("rotates AT & RT", async () => {
       const registration = {
         email: "user@email.com",
         password: "user-password-123",
@@ -209,6 +209,39 @@ describe("AuthModule", () => {
       expect(newCookies.refreshToken).toBeDefined();
       expect(cookies.refreshToken.value).not.toEqual(newCookies.refreshToken.value);
       expect(newTokenHash).toBe(stored);
+    });
+
+    it("returns 401 for unknown RT", async () => {
+      const registration = {
+        email: "user@email.com",
+        password: "user-password-123",
+      };
+      await request(app.getHttpServer()).post("/auth/register").send(registration);
+      await request(app.getHttpServer()).post("/auth/login").send(registration);
+
+      await request(app.getHttpServer())
+        .post("/auth/refresh")
+        .set("Cookie", "refreshToken=unknown-refresh-token")
+        .expect(401)
+        .expect(({ headers }) => {
+          expect(headers["set-cookie"]).toBeUndefined();
+        });
+    });
+
+    it("returns 401 when RT isn't provided", async () => {
+      const registration = {
+        email: "user@email.com",
+        password: "user-password-123",
+      };
+      await request(app.getHttpServer()).post("/auth/register").send(registration);
+      await request(app.getHttpServer()).post("/auth/login").send(registration);
+
+      await request(app.getHttpServer())
+        .post("/auth/refresh")
+        .expect(401)
+        .expect(({ headers }) => {
+          expect(headers["set-cookie"]).toBeUndefined();
+        });
     });
   });
 

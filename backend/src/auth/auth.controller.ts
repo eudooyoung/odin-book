@@ -1,4 +1,14 @@
-import { Body, Controller, Cookies, HttpCode, Post, Req, Res, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Cookies,
+  HttpCode,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+  UseGuards,
+} from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { type Request, type Response } from "express";
 import { getAuthCookieOptions } from "./auth-cookie-options.js";
@@ -39,6 +49,9 @@ export class AuthController {
     @Cookies() cookies: Record<string, string>,
     @Res({ passthrough: true }) res: Response,
   ) {
+    if (!cookies.refreshToken) {
+      throw new UnauthorizedException("Refresh token doesn't exist");
+    }
     const { accessToken, refreshToken } = await this.authService.refresh(cookies.refreshToken);
     const options = getAuthCookieOptions(process.env.NODE_ENV);
     res.cookie("accessToken", accessToken, options.accessToken);

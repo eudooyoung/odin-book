@@ -196,5 +196,11 @@ describe("AuthService (unit)", () => {
       });
       expect(result).toEqual({ accessToken: newAccessToken, refreshToken: newRefreshToken });
     });
+
+    it("throws UnauthorizedException for unknown RT", async () => {
+      vi.mocked(prismaService.refreshSession.findUnique).mockResolvedValue(null);
+
+      await expect(service.refresh("unknown-refresh-token")).rejects.toThrow(UnauthorizedException);
+    });
   });
 });

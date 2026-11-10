@@ -60,7 +60,7 @@ export class AuthService {
       include: { user: true },
     });
     if (!stored) {
-      throw new Error();
+      throw new UnauthorizedException("Invalid refresh token");
     }
     const payload = { email: stored.user.email, sub: stored.userId };
     const newAccessToken = this.jwtService.sign(payload);
