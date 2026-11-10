@@ -1,6 +1,7 @@
 import { StandardSchemaValidationPipe, type INestApplication } from "@nestjs/common";
 import { Test, type TestingModule } from "@nestjs/testing";
 import { createHash } from "node:crypto";
+import { parseSetCookie } from "set-cookie-parser";
 import request from "supertest";
 import { App } from "supertest/types.js";
 import { AppModule } from "../src/app.module.js";
@@ -100,49 +101,49 @@ describe("AuthModule", () => {
         body: { id },
       } = await request(app.getHttpServer()).post("/auth/register").send(registration);
 
-      let refreshTokenValue: string | undefined;
+      let refreshToken: string | undefined;
       await request(app.getHttpServer())
         .post("/auth/login")
         .send(registration)
         .expect(204)
         .expect(
           request.cookies(null, (_, { cookies: resCookies }) => {
-            const accessToken = resCookies.find((c) => c.name === "accessToken");
-            if (!accessToken) {
+            const accessTokenCookie = resCookies.find((c) => c.name === "accessToken");
+            if (!accessTokenCookie) {
               throw new Error("accessToken cookie was not set");
             }
-            expect(accessToken.options).toMatchObject({
+            expect(accessTokenCookie.options).toMatchObject({
               httponly: true,
               samesite: "Lax",
               path: "/",
               "max-age": `${15 * 60}`,
             });
-            expect(accessToken.options).not.toHaveProperty("secure");
+            expect(accessTokenCookie.options).not.toHaveProperty("secure");
             return true;
           }),
         )
         .expect(
           request.cookies(null, (_, { cookies: resCookies }) => {
-            const refreshToken = resCookies.find((c) => c.name === "refreshToken");
-            if (!refreshToken) {
+            const refreshTokenCookie = resCookies.find((c) => c.name === "refreshToken");
+            if (!refreshTokenCookie) {
               throw new Error("refreshToken cookie was not set");
             }
-            refreshTokenValue = refreshToken.value;
-            expect(refreshToken.options).toMatchObject({
+            refreshToken = refreshTokenCookie.value;
+            expect(refreshTokenCookie.options).toMatchObject({
               httponly: true,
               samesite: "Lax",
               path: "/auth",
               "max-age": `${7 * 24 * 60 * 60}`,
             });
-            expect(refreshToken.options).not.toHaveProperty("secure");
+            expect(refreshTokenCookie.options).not.toHaveProperty("secure");
             return true;
           }),
         );
 
-      if (refreshTokenValue === undefined) {
+      if (!refreshToken) {
         throw new Error("Refresh token value was not set");
       }
-      const tokenHash = createHash("sha256").update(refreshTokenValue).digest("hex");
+      const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
       const { tokenHash: stored } = await prisma.refreshSession.findFirstOrThrow({
         where: { userId: id },
         select: { tokenHash: true },
@@ -173,6 +174,41 @@ describe("AuthModule", () => {
         .expect(({ headers }) => {
           expect(headers["set-cookie"]).toBeUndefined();
         });
+    });
+  });
+
+  describe("POST /auth/refresh", () => {
+    it("rotates RT", async () => {
+      const registration = {
+        email: "user@email.com",
+        password: "user-password-123",
+      };
+      const {
+        body: { id: userId },
+      } = await request(app.getHttpServer()).post("/auth/register").send(registration);
+      const loginResponse = await request(app.getHttpServer())
+        .post("/auth/login")
+        .send(registration);
+      const cookies = parseSetCookie(loginResponse, {
+        map: true,
+      });
+
+      const refreshResponse = await request(app.getHttpServer())
+        .post("/auth/refresh")
+        .set("Cookie", `refreshToken=${cookies.refreshToken.value}`)
+        .expect(204);
+      const newCookies = parseSetCookie(refreshResponse, {
+        map: true,
+      });
+      const newTokenHash = createHash("sha256").update(newCookies.refreshToken.value).digest("hex");
+      const { tokenHash: stored } = await prisma.refreshSession.findFirstOrThrow({
+        where: { userId },
+      });
+
+      expect(newCookies.accessToken).toBeDefined();
+      expect(newCookies.refreshToken).toBeDefined();
+      expect(cookies.refreshToken.value).not.toEqual(newCookies.refreshToken.value);
+      expect(newTokenHash).toBe(stored);
     });
   });
 

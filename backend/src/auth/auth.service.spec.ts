@@ -31,6 +31,8 @@ describe("AuthService (unit)", () => {
   const prismaService = {
     refreshSession: {
       create: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
     },
   };
 
@@ -87,9 +89,7 @@ describe("AuthService (unit)", () => {
         }),
       );
 
-      await expect(service.register(registerDto)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
     });
   });
 
@@ -142,13 +142,13 @@ describe("AuthService (unit)", () => {
   describe(".login", () => {
     it("returns JWT AT and Opaque RT, creating a refresh session with the RT hash", async () => {
       const authUser = { id: 1, email: "user@email.com" };
-      jwtService.sign.mockReturnValue("accessToken");
-      const random = Buffer.alloc(32, 1);
-      const refreshToken = random.toString("base64url");
-      const refreshTokenHash = createHash("sha256")
-        .update(refreshToken)
-        .digest("hex");
-      vi.mocked(randomBytes).mockImplementation(() => random);
+      const accessToken = "access-token";
+      jwtService.sign.mockReturnValue(accessToken);
+      const refreshToken = "refresh-token";
+      const buffer = Buffer.alloc(32);
+      vi.spyOn(buffer, "toString").mockReturnValue(refreshToken);
+      vi.mocked(randomBytes).mockImplementation(() => buffer);
+      const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
       const result = await service.login(authUser);
 
@@ -158,9 +158,43 @@ describe("AuthService (unit)", () => {
       });
       expect(randomBytes).toHaveBeenCalledWith(32);
       expect(prismaService.refreshSession.create).toHaveBeenCalledWith({
-        data: { userId: authUser.id, tokenHash: refreshTokenHash },
+        data: { userId: authUser.id, tokenHash },
       });
-      expect(result).toEqual({ accessToken: "accessToken", refreshToken });
+      expect(result).toEqual({ accessToken, refreshToken });
+    });
+  });
+
+  describe(".refresh", () => {
+    it("rotates the refresh session and returns new AT & RT", async () => {
+      const authUser = { id: 1, email: "user@email.com" };
+      const refreshToken = "refresh-Token";
+      const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
+      const newAccessToken = "new-access-token";
+      jwtService.sign.mockReturnValue(newAccessToken);
+      const newRefreshToken = "new-refresh-token";
+      const buffer = Buffer.alloc(32);
+      vi.spyOn(buffer, "toString").mockReturnValue(newRefreshToken);
+      vi.mocked(randomBytes).mockImplementation(() => buffer);
+      const newTokenHash = createHash("sha256").update(newRefreshToken).digest("hex");
+      vi.mocked(prismaService.refreshSession.findUnique).mockResolvedValue({
+        tokenHash,
+        userId: authUser.id,
+        user: authUser,
+      });
+
+      const result = await service.refresh(refreshToken);
+
+      expect(prismaService.refreshSession.findUnique).toHaveBeenCalledWith({
+        where: { tokenHash },
+        include: { user: true },
+      });
+      expect(jwtService.sign).toHaveBeenCalledWith({ email: authUser.email, sub: authUser.id });
+      expect(randomBytes).toHaveBeenCalledWith(32);
+      expect(prismaService.refreshSession.update).toHaveBeenCalledWith({
+        data: { tokenHash: newTokenHash },
+        where: { tokenHash },
+      });
+      expect(result).toEqual({ accessToken: newAccessToken, refreshToken: newRefreshToken });
     });
   });
 });

@@ -44,12 +44,34 @@ export class AuthService {
     const payload = { email, sub: id };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = randomBytes(32).toString("base64url");
-    const refreshTokenHash = createHash("sha256").update(refreshToken).digest("hex");
+    const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
     await this.prismaService.refreshSession.create({
-      data: { userId: id, tokenHash: refreshTokenHash },
+      data: { userId: id, tokenHash },
     });
 
     return { accessToken, refreshToken };
+  }
+
+  async refresh(refreshToken: string) {
+    const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
+    const stored = await this.prismaService.refreshSession.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+    if (!stored) {
+      throw new Error();
+    }
+    const payload = { email: stored.user.email, sub: stored.userId };
+    const newAccessToken = this.jwtService.sign(payload);
+    const newRefreshToken = randomBytes(32).toString("base64url");
+    const newTokenHash = createHash("sha256").update(newRefreshToken).digest("hex");
+
+    await this.prismaService.refreshSession.update({
+      data: { tokenHash: newTokenHash },
+      where: { tokenHash },
+    });
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
 }
