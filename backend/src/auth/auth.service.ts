@@ -47,7 +47,12 @@ export class AuthService {
     const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
     await this.prismaService.refreshSession.create({
-      data: { userId: id, tokenHash },
+      data: {
+        userId: id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        absoluteExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
     });
 
     return { accessToken, refreshToken };
@@ -55,20 +60,26 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
-    const stored = await this.prismaService.refreshSession.findUnique({
+    const refreshSession = await this.prismaService.refreshSession.findUnique({
       where: { tokenHash },
       include: { user: true },
     });
-    if (!stored) {
+
+    if (
+      !refreshSession ||
+      refreshSession.expiresAt.getTime() <= Date.now() ||
+      refreshSession.absoluteExpiresAt.getTime() <= Date.now()
+    ) {
       throw new UnauthorizedException("Invalid refresh token");
     }
-    const payload = { email: stored.user.email, sub: stored.userId };
+
+    const payload = { email: refreshSession.user.email, sub: refreshSession.userId };
     const newAccessToken = this.jwtService.sign(payload);
     const newRefreshToken = randomBytes(32).toString("base64url");
     const newTokenHash = createHash("sha256").update(newRefreshToken).digest("hex");
 
     await this.prismaService.refreshSession.update({
-      data: { tokenHash: newTokenHash },
+      data: { tokenHash: newTokenHash, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
       where: { tokenHash },
     });
 

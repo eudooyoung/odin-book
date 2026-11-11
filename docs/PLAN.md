@@ -80,7 +80,7 @@ rectangle Authentication {
 | secure    | false(dev) / true(prod) | false(dev) / true(prod) |
 | sameSite  | lax                     | lax                     |
 | path      | /                       | /auth                   |
-| maxAge    | 15 minutes              | Up to 7 days            |
+| maxAge    | 15 minutes              | 7 days                  |
 
 #### Email Resgistraion
 
@@ -287,28 +287,29 @@ erDiagram
     User ||..o{ Post: writes
 
     User {
-        Number id PK
+        Int id PK
         String email UK
         String passwordHash
-        Date createdAt
+        DateTime createdAt
     }
     Profile{
-        Number userId PK, FK
+        Int userId PK, FK
         String handle UK
         String imageAddress
         String displayName
         String bio
     }
     Post {
-        Number id PK
-        Number authorId FK
+        Int id PK
+        Int authorId FK
         String content
-        Date createdAt
+        DateTime createdAt
     }
     RefreshSession {
-        Number id PK
+        Int id PK
         String tokenHash UK
-        Number userId FK
+        Int userId FK
+        DateTime expiresAt
     }
 ```
 

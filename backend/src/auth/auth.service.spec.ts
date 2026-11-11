@@ -141,6 +141,10 @@ describe("AuthService (unit)", () => {
 
   describe(".login", () => {
     it("returns JWT AT and Opaque RT, creating a refresh session with the RT hash", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      const issuedAt = Date.now();
+      vi.setSystemTime(issuedAt);
+
       const authUser = { id: 1, email: "user@email.com" };
       const accessToken = "access-token";
       jwtService.sign.mockReturnValue(accessToken);
@@ -158,14 +162,32 @@ describe("AuthService (unit)", () => {
       });
       expect(randomBytes).toHaveBeenCalledWith(32);
       expect(prismaService.refreshSession.create).toHaveBeenCalledWith({
-        data: { userId: authUser.id, tokenHash },
+        data: {
+          userId: authUser.id,
+          tokenHash,
+          expiresAt: new Date(issuedAt + 7 * 24 * 60 * 60 * 1000),
+          absoluteExpiresAt: new Date(issuedAt + 30 * 24 * 60 * 60 * 1000),
+        },
       });
       expect(result).toEqual({ accessToken, refreshToken });
+
+      vi.useRealTimers();
     });
   });
 
   describe(".refresh", () => {
-    it("rotates the refresh session and returns new AT & RT", async () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("rotates the refresh session with extended expiration and returns new AT & RT", async () => {
+      const firstIssuedAt = Date.now();
+      vi.setSystemTime(firstIssuedAt);
+
       const authUser = { id: 1, email: "user@email.com" };
       const refreshToken = "refresh-Token";
       const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
@@ -180,27 +202,63 @@ describe("AuthService (unit)", () => {
         tokenHash,
         userId: authUser.id,
         user: authUser,
+        expiresAt: new Date(firstIssuedAt + 7 * 24 * 60 * 60 * 1000),
+        absoluteExpiresAt: new Date(firstIssuedAt + 30 * 24 * 60 * 60 * 1000),
       });
 
+      const secondIssuedAt = new Date(firstIssuedAt + 6 * 24 * 60 * 60 * 1000).getTime();
+      vi.setSystemTime(secondIssuedAt);
       const result = await service.refresh(refreshToken);
 
       expect(prismaService.refreshSession.findUnique).toHaveBeenCalledWith({
         where: { tokenHash },
         include: { user: true },
       });
-      expect(jwtService.sign).toHaveBeenCalledWith({ email: authUser.email, sub: authUser.id });
+      expect(jwtService.sign).toHaveBeenCalledWith({
+        email: authUser.email,
+        sub: authUser.id,
+      });
       expect(randomBytes).toHaveBeenCalledWith(32);
       expect(prismaService.refreshSession.update).toHaveBeenCalledWith({
-        data: { tokenHash: newTokenHash },
+        data: {
+          tokenHash: newTokenHash,
+          expiresAt: new Date(secondIssuedAt + 7 * 24 * 60 * 60 * 1000),
+        },
         where: { tokenHash },
       });
-      expect(result).toEqual({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+      expect(result).toEqual({
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      });
     });
 
     it("throws UnauthorizedException for unknown RT", async () => {
       vi.mocked(prismaService.refreshSession.findUnique).mockResolvedValue(null);
 
       await expect(service.refresh("unknown-refresh-token")).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("throws UnauthorizedException for RT older than regular-expiration", async () => {
+      const issuedAt = Date.now();
+      vi.setSystemTime(issuedAt);
+      vi.mocked(prismaService.refreshSession.findUnique).mockResolvedValue({
+        expiresAt: new Date(issuedAt + 7 * 24 * 60 * 60 * 1000),
+      });
+      vi.setSystemTime(new Date(issuedAt + 7 * 24 * 60 * 60 * 1000 + 1));
+
+      await expect(service.refresh("expired-refresh-token")).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("throws UnauthorizedException for RT older than absolute-expiraton", async () => {
+      const issuedAt = Date.now();
+      vi.setSystemTime(issuedAt);
+      vi.mocked(prismaService.refreshSession.findUnique).mockResolvedValue({
+        expiresAt: new Date(issuedAt + 31 * 24 * 60 * 60 * 1000),
+        absoluteExpiresAt: new Date(issuedAt + 30 * 24 * 60 * 60 * 1000),
+      });
+      vi.setSystemTime(new Date(issuedAt + 30 * 24 * 60 * 60 * 1000 + 1));
+
+      await expect(service.refresh("expired-refresh-token")).rejects.toThrow(UnauthorizedException);
     });
   });
 });

@@ -22,6 +22,11 @@ describe("AuthModule", () => {
     prisma = app.get(PrismaService);
   });
 
+  afterEach(async () => {
+    await prisma.user.deleteMany();
+    await app.close();
+  });
+
   describe("POST /auth/register", () => {
     it("registers a user with email and password", async () => {
       const registration = {
@@ -154,11 +159,17 @@ describe("AuthModule", () => {
     it.each([
       {
         case: "unknown email",
-        credential: { email: "unknown@email.com", password: "user-password-123" },
+        credential: {
+          email: "unknown@email.com",
+          password: "user-password-123",
+        },
       },
       {
         case: "invalid password",
-        credential: { email: "user@email.com", password: "invalid-password-123" },
+        credential: {
+          email: "user@email.com",
+          password: "invalid-password-123",
+        },
       },
     ])("returns 401 for $case", async ({ credential }) => {
       const registration = {
@@ -189,25 +200,26 @@ describe("AuthModule", () => {
       const loginResponse = await request(app.getHttpServer())
         .post("/auth/login")
         .send(registration);
-      const cookies = parseSetCookie(loginResponse, {
+      const { refreshToken: refreshTokenCookie } = parseSetCookie(loginResponse, {
         map: true,
       });
 
       const refreshResponse = await request(app.getHttpServer())
         .post("/auth/refresh")
-        .set("Cookie", `refreshToken=${cookies.refreshToken.value}`)
+        .set("Cookie", `refreshToken=${refreshTokenCookie.value}`)
         .expect(204);
-      const newCookies = parseSetCookie(refreshResponse, {
-        map: true,
-      });
-      const newTokenHash = createHash("sha256").update(newCookies.refreshToken.value).digest("hex");
+      const { accessToken: newAccesTokenCookie, refreshToken: newRefreshTokenCookie } =
+        parseSetCookie(refreshResponse, {
+          map: true,
+        });
+
+      expect(newAccesTokenCookie).toBeDefined();
+      expect(newRefreshTokenCookie).toBeDefined();
+      const newTokenHash = createHash("sha256").update(newRefreshTokenCookie.value).digest("hex");
       const { tokenHash: stored } = await prisma.refreshSession.findFirstOrThrow({
         where: { userId },
       });
-
-      expect(newCookies.accessToken).toBeDefined();
-      expect(newCookies.refreshToken).toBeDefined();
-      expect(cookies.refreshToken.value).not.toEqual(newCookies.refreshToken.value);
+      expect(refreshTokenCookie.value).not.toEqual(newRefreshTokenCookie.value);
       expect(newTokenHash).toBe(stored);
     });
 
@@ -243,10 +255,128 @@ describe("AuthModule", () => {
           expect(headers["set-cookie"]).toBeUndefined();
         });
     });
-  });
 
-  afterEach(async () => {
-    await prisma.user.deleteMany();
-    await app.close();
+    describe("RT expiration", () => {
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ["Date"] });
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it("extends RT expiration by 7 days on refresh", async () => {
+        const firstIssuedAt = Date.now();
+        vi.setSystemTime(firstIssuedAt);
+
+        // register
+        const registration = {
+          email: "user@email.com",
+          password: "user-password-123",
+        };
+        await request(app.getHttpServer()).post("/auth/register").send(registration);
+
+        // first issue
+        const loginResponse = await request(app.getHttpServer())
+          .post("/auth/login")
+          .send(registration);
+        const { refreshToken: refreshTokenCookie } = parseSetCookie(loginResponse, {
+          map: true,
+        });
+
+        // second issue
+        const secondIssuedAt = new Date(firstIssuedAt + 6 * 24 * 60 * 60 * 1000).getTime();
+        vi.setSystemTime(secondIssuedAt);
+        const refreshResponse = await request(app.getHttpServer())
+          .post("/auth/refresh")
+          .set("Cookie", `refreshToken=${refreshTokenCookie.value}`)
+          .expect(204);
+        const { refreshToken: secondRefreshTokenCookie } = parseSetCookie(refreshResponse, {
+          map: true,
+        });
+
+        // third issue
+        const thirdIssuedAt = new Date(secondIssuedAt + 2 * 24 * 60 * 60 * 1000).getTime();
+        vi.setSystemTime(thirdIssuedAt);
+        await request(app.getHttpServer())
+          .post("/auth/refresh")
+          .set("Cookie", `refreshToken=${secondRefreshTokenCookie.value}`)
+          .expect(204);
+      });
+
+      it("returns 401 when RT has expired", async () => {
+        const issuedAt = Date.now();
+        vi.setSystemTime(issuedAt);
+
+        const registration = {
+          email: "user@email.com",
+          password: "user-password-123",
+        };
+        await request(app.getHttpServer()).post("/auth/register").send(registration);
+        const loginResponse = await request(app.getHttpServer())
+          .post("/auth/login")
+          .send(registration);
+        const {
+          refreshToken: { value: refreshToken },
+        } = parseSetCookie(loginResponse, { map: true });
+        vi.setSystemTime(new Date(issuedAt + 7 * 24 * 60 * 60 * 1000 + 1));
+
+        await request(app.getHttpServer())
+          .post("/auth/refresh")
+          .set("Cookie", `refreshToken=${refreshToken}`)
+          .expect(401)
+          .expect(({ headers }) => {
+            expect(headers["set-cookie"]).toBeUndefined();
+          });
+      });
+
+      it("returns 401 after 30 days", async () => {
+        const firstIssuedAt = Date.now();
+        vi.setSystemTime(firstIssuedAt);
+
+        // register
+        const registration = {
+          email: "user@email.com",
+          password: "user-password-123",
+        };
+        await request(app.getHttpServer()).post("/auth/register").send(registration);
+
+        // login
+        const loginResponse = await request(app.getHttpServer())
+          .post("/auth/login")
+          .send(registration);
+        const { refreshToken: refreshTokenCookie } = parseSetCookie(loginResponse, {
+          map: true,
+        });
+
+        // refresh until 30 days passed
+        let currentTime = new Date(firstIssuedAt + 6 * 24 * 60 * 60 * 1000).getTime();
+        vi.setSystemTime(currentTime);
+        let cookieLife = currentTime - firstIssuedAt;
+        let refreshTokenValue = refreshTokenCookie.value;
+        while (cookieLife < 30 * 24 * 60 * 60 * 1000) {
+          const refreshResponse = await request(app.getHttpServer())
+            .post("/auth/refresh")
+            .set("Cookie", `refreshToken=${refreshTokenValue}`)
+            .expect(204);
+          const { refreshToken: refreshTokenCookie } = parseSetCookie(refreshResponse, {
+            map: true,
+          });
+          currentTime = new Date(currentTime + 6 * 24 * 60 * 60 * 1000).getTime();
+          vi.setSystemTime(currentTime);
+          cookieLife = currentTime - firstIssuedAt;
+          refreshTokenValue = refreshTokenCookie.value;
+        }
+
+        // expected to fail to refresh after 30 days
+        await request(app.getHttpServer())
+          .post("/auth/refresh")
+          .set("Cookie", `refreshToken=${refreshTokenValue}`)
+          .expect(401)
+          .expect(({ headers }) => {
+            expect(headers["set-cookie"]).toBeUndefined();
+          });
+      });
+    });
   });
 });

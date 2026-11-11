@@ -21,8 +21,10 @@ model User {
 }
 
 model RefreshSession {
-  id        Int    @id @default(autoincrement())
-  tokenHash String @unique
-  userId    Int
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                Int      @id @default(autoincrement())
+  tokenHash         String   @unique
+  userId            Int
+  expiresAt         DateTime
+  absoluteExpiresAt DateTime
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
