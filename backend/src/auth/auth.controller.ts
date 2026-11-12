@@ -64,7 +64,9 @@ export class AuthController {
     @Cookies() cookies: Record<string, string>,
     @Res({ passthrough: true }) res: Response,
   ) {
-    await this.authService.logout(cookies.refreshToken);
+    if (cookies?.refreshToken) {
+      await this.authService.logout(cookies.refreshToken);
+    }
     res.clearCookie("accessToken", { path: "/" });
     res.clearCookie("refreshToken", { path: "/auth" });
   }

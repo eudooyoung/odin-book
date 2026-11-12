@@ -89,6 +89,13 @@ export class AuthService {
   async logout(refreshToken: string) {
     const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
-    await this.prismaService.refreshSession.delete({ where: { tokenHash } });
+    try {
+      await this.prismaService.refreshSession.delete({ where: { tokenHash } });
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === "P2025") {
+        return;
+      }
+      throw error;
+    }
   }
 }

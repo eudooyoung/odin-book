@@ -383,8 +383,12 @@ describe("AuthModule", () => {
     });
   });
 
-  describe.only("POST /auth/logout", () => {
-    it("returns 204, clears cookies and removes the refresh session", async () => {
+  describe("POST /auth/logout", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("returns 204, clears cookies and deletes the refresh session", async () => {
       // arrange
       const registration = {
         email: "user@email.com",
@@ -401,6 +405,106 @@ describe("AuthModule", () => {
       });
 
       // act
+      const logoutResponse = await request(app.getHttpServer())
+        .post("/auth/logout")
+        .set("Cookie", `refreshToken=${refreshTokenCookie.value}`)
+        .expect(204);
+      const cookiesAfterLogout = parseSetCookie(logoutResponse, {
+        map: true,
+      });
+
+      // assert
+      expect(cookiesAfterLogout.accessToken).toBeDefined();
+      expect(cookiesAfterLogout.accessToken).toMatchObject({
+        value: "",
+        path: "/",
+      });
+      expect(cookiesAfterLogout.accessToken.expires!.getTime()).toBeLessThan(Date.now());
+      expect(cookiesAfterLogout.refreshToken).toBeDefined();
+      expect(cookiesAfterLogout.refreshToken).toMatchObject({
+        value: "",
+        path: "/auth",
+      });
+      expect(cookiesAfterLogout.refreshToken.expires!.getTime()).toBeLessThan(Date.now());
+      const result = await prisma.refreshSession.findFirst({ where: { userId } });
+      expect(result).toBeNull();
+    });
+
+    it.each([
+      { case: "the Cookie header is missing", cookie: undefined },
+      { case: "the refresh token is empty", cookie: "refreshToken=" },
+    ])("returns 204 and clears cookies when $case", async ({ cookie }) => {
+      // act
+      const logoutResponse = cookie
+        ? await request(app.getHttpServer()).post("/auth/logout").set("Cookie", cookie).expect(204)
+        : await request(app.getHttpServer()).post("/auth/logout").expect(204);
+
+      const cookiesAfterLogout = parseSetCookie(logoutResponse, {
+        map: true,
+      });
+
+      // assert
+      expect(cookiesAfterLogout.accessToken).toBeDefined();
+      expect(cookiesAfterLogout.accessToken).toMatchObject({
+        value: "",
+        path: "/",
+      });
+      expect(cookiesAfterLogout.accessToken.expires!.getTime()).toBeLessThan(Date.now());
+      expect(cookiesAfterLogout.refreshToken).toBeDefined();
+      expect(cookiesAfterLogout.refreshToken).toMatchObject({
+        value: "",
+        path: "/auth",
+      });
+      expect(cookiesAfterLogout.refreshToken.expires!.getTime()).toBeLessThan(Date.now());
+    });
+
+    it("returns 204 and clear cookies when RT is unknown", async () => {
+      // act
+      const logoutResponse = await request(app.getHttpServer())
+        .post("/auth/logout")
+        .set("Cookie", "refreshToken=unknown-refresh-token")
+        .expect(204);
+
+      const cookiesAfterLogout = parseSetCookie(logoutResponse, {
+        map: true,
+      });
+
+      // assert
+      expect(cookiesAfterLogout.accessToken).toBeDefined();
+      expect(cookiesAfterLogout.accessToken).toMatchObject({
+        value: "",
+        path: "/",
+      });
+      expect(cookiesAfterLogout.accessToken.expires!.getTime()).toBeLessThan(Date.now());
+      expect(cookiesAfterLogout.refreshToken).toBeDefined();
+      expect(cookiesAfterLogout.refreshToken).toMatchObject({
+        value: "",
+        path: "/auth",
+      });
+      expect(cookiesAfterLogout.refreshToken.expires!.getTime()).toBeLessThan(Date.now());
+    });
+
+    it("returns 204, clears cookies and deletes the refresh session when RT has expired", async () => {
+      // arrange
+      vi.useFakeTimers({ toFake: ["Date"] });
+      const issuedAt = Date.now();
+      vi.setSystemTime(issuedAt);
+      const registration = {
+        email: "user@email.com",
+        password: "user-password-123",
+      };
+      const {
+        body: { id: userId },
+      } = await request(app.getHttpServer()).post("/auth/register").send(registration);
+      const loginResponse = await request(app.getHttpServer())
+        .post("/auth/login")
+        .send(registration);
+      const { refreshToken: refreshTokenCookie } = parseSetCookie(loginResponse, {
+        map: true,
+      });
+
+      // act
+      vi.setSystemTime(issuedAt + 7 * 24 * 60 * 60 * 1000);
       const logoutResponse = await request(app.getHttpServer())
         .post("/auth/logout")
         .set("Cookie", `refreshToken=${refreshTokenCookie.value}`)

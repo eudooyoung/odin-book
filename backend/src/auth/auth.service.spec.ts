@@ -269,17 +269,26 @@ describe("AuthService (unit)", () => {
     });
   });
 
-  describe.only(".logout", () => {
+  describe(".logout", () => {
     it("invokes refreshSession.delete with tokenHash", async () => {
-      // arrange
       const refreshToken = "refresh-token";
       const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
-      // act
       await service.logout(refreshToken);
 
-      // assert
       expect(prismaService.refreshSession.delete).toHaveBeenCalledWith({ where: { tokenHash } });
+    });
+
+    it("ignores P2025 error thrown during refreshSession.delete query", async () => {
+      const refreshToken = "unknown-refresh-token";
+      prismaService.refreshSession.delete.mockRejectedValue(
+        new PrismaClientKnownRequestError("record doesn't exist", {
+          code: "P2025",
+          clientVersion: "test",
+        }),
+      );
+
+      await expect(service.logout(refreshToken)).resolves.toBeUndefined();
     });
   });
 });
