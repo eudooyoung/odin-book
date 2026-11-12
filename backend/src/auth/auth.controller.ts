@@ -36,13 +36,8 @@ export class AuthController {
   @Post("login")
   @UseGuards(AuthGuard("local"))
   @HttpCode(204)
-  async login(
-    @Req() req: AuthRequest,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const { accessToken, refreshToken } = await this.authService.login(
-      req.user,
-    );
+  async login(@Req() req: AuthRequest, @Res({ passthrough: true }) res: Response) {
+    const { accessToken, refreshToken } = await this.authService.login(req.user);
     const options = getAuthCookieOptions(process.env.NODE_ENV);
     res.cookie("accessToken", accessToken, options.accessToken);
     res.cookie("refreshToken", refreshToken, options.refreshToken);
@@ -57,11 +52,20 @@ export class AuthController {
     if (!cookies.refreshToken) {
       throw new UnauthorizedException("Refresh token doesn't exist");
     }
-    const { accessToken, refreshToken } = await this.authService.refresh(
-      cookies.refreshToken,
-    );
+    const { accessToken, refreshToken } = await this.authService.refresh(cookies.refreshToken);
     const options = getAuthCookieOptions(process.env.NODE_ENV);
     res.cookie("accessToken", accessToken, options.accessToken);
     res.cookie("refreshToken", refreshToken, options.refreshToken);
+  }
+
+  @Post("logout")
+  @HttpCode(204)
+  async logout(
+    @Cookies() cookies: Record<string, string>,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.logout(cookies.refreshToken);
+    res.clearCookie("accessToken", { path: "/" });
+    res.clearCookie("refreshToken", { path: "/auth" });
   }
 }

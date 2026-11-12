@@ -33,6 +33,7 @@ describe("AuthService (unit)", () => {
       create: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
   };
 
@@ -141,6 +142,7 @@ describe("AuthService (unit)", () => {
 
   describe(".login", () => {
     it("returns JWT AT and Opaque RT, creating a refresh session with the RT hash", async () => {
+      // arrange
       vi.useFakeTimers({ toFake: ["Date"] });
       const issuedAt = Date.now();
       vi.setSystemTime(issuedAt);
@@ -154,8 +156,10 @@ describe("AuthService (unit)", () => {
       vi.mocked(randomBytes).mockImplementation(() => buffer);
       const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
 
+      // act
       const result = await service.login(authUser);
 
+      // assert
       expect(jwtService.sign).toHaveBeenCalledWith({
         email: authUser.email,
         sub: authUser.id,
@@ -185,6 +189,7 @@ describe("AuthService (unit)", () => {
     });
 
     it("rotates the refresh session with extended expiration and returns new AT & RT", async () => {
+      // arrange
       const firstIssuedAt = Date.now();
       vi.setSystemTime(firstIssuedAt);
 
@@ -206,10 +211,12 @@ describe("AuthService (unit)", () => {
         absoluteExpiresAt: new Date(firstIssuedAt + 30 * 24 * 60 * 60 * 1000),
       });
 
+      // act
       const secondIssuedAt = new Date(firstIssuedAt + 6 * 24 * 60 * 60 * 1000).getTime();
       vi.setSystemTime(secondIssuedAt);
       const result = await service.refresh(refreshToken);
 
+      // assert
       expect(prismaService.refreshSession.findUnique).toHaveBeenCalledWith({
         where: { tokenHash },
         include: { user: true },
@@ -259,6 +266,20 @@ describe("AuthService (unit)", () => {
       vi.setSystemTime(new Date(issuedAt + 30 * 24 * 60 * 60 * 1000 + 1));
 
       await expect(service.refresh("expired-refresh-token")).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe.only(".logout", () => {
+    it("invokes refreshSession.delete with tokenHash", async () => {
+      // arrange
+      const refreshToken = "refresh-token";
+      const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
+
+      // act
+      await service.logout(refreshToken);
+
+      // assert
+      expect(prismaService.refreshSession.delete).toHaveBeenCalledWith({ where: { tokenHash } });
     });
   });
 });

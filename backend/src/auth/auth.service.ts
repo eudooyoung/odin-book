@@ -85,4 +85,10 @@ export class AuthService {
 
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
+
+  async logout(refreshToken: string) {
+    const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
+
+    await this.prismaService.refreshSession.delete({ where: { tokenHash } });
+  }
 }

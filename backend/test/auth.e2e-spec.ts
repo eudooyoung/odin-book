@@ -190,6 +190,7 @@ describe("AuthModule", () => {
 
   describe("POST /auth/refresh", () => {
     it("rotates AT & RT", async () => {
+      // register & login
       const registration = {
         email: "user@email.com",
         password: "user-password-123",
@@ -204,6 +205,7 @@ describe("AuthModule", () => {
         map: true,
       });
 
+      // refresh
       const refreshResponse = await request(app.getHttpServer())
         .post("/auth/refresh")
         .set("Cookie", `refreshToken=${refreshTokenCookie.value}`)
@@ -213,6 +215,7 @@ describe("AuthModule", () => {
           map: true,
         });
 
+      // cookies
       expect(newAccesTokenCookie).toBeDefined();
       expect(newRefreshTokenCookie).toBeDefined();
       const newTokenHash = createHash("sha256").update(newRefreshTokenCookie.value).digest("hex");
@@ -377,6 +380,50 @@ describe("AuthModule", () => {
             expect(headers["set-cookie"]).toBeUndefined();
           });
       });
+    });
+  });
+
+  describe.only("POST /auth/logout", () => {
+    it("returns 204, clears cookies and removes the refresh session", async () => {
+      // arrange
+      const registration = {
+        email: "user@email.com",
+        password: "user-password-123",
+      };
+      const {
+        body: { id: userId },
+      } = await request(app.getHttpServer()).post("/auth/register").send(registration);
+      const loginResponse = await request(app.getHttpServer())
+        .post("/auth/login")
+        .send(registration);
+      const { refreshToken: refreshTokenCookie } = parseSetCookie(loginResponse, {
+        map: true,
+      });
+
+      // act
+      const logoutResponse = await request(app.getHttpServer())
+        .post("/auth/logout")
+        .set("Cookie", `refreshToken=${refreshTokenCookie.value}`)
+        .expect(204);
+      const cookiesAfterLogout = parseSetCookie(logoutResponse, {
+        map: true,
+      });
+
+      // assert
+      expect(cookiesAfterLogout.accessToken).toBeDefined();
+      expect(cookiesAfterLogout.accessToken).toMatchObject({
+        value: "",
+        path: "/",
+      });
+      expect(cookiesAfterLogout.accessToken.expires!.getTime()).toBeLessThan(Date.now());
+      expect(cookiesAfterLogout.refreshToken).toBeDefined();
+      expect(cookiesAfterLogout.refreshToken).toMatchObject({
+        value: "",
+        path: "/auth",
+      });
+      expect(cookiesAfterLogout.refreshToken.expires!.getTime()).toBeLessThan(Date.now());
+      const result = await prisma.refreshSession.findFirst({ where: { userId } });
+      expect(result).toBeNull();
     });
   });
 });
