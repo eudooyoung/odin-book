@@ -5,12 +5,12 @@ import { App } from "supertest/types.js";
 import { PrismaService } from "../src/prisma/prisma.service.js";
 import { AppModule } from "./../src/app.module.js";
 
-describe("Application setup (e2e)", () => {
+describe("Application", () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule.withConfig()],
     }).compile();
 
     app = moduleFixture.createNestApplication();
@@ -26,6 +26,15 @@ describe("Application setup (e2e)", () => {
     const [{ result }] = await prismaService.$queryRaw<{ result: number }[]>`SELECT 1 AS result`;
 
     expect(result).toBe(1);
+  });
+
+  it("connects to the test db", async () => {
+    const prismaService: PrismaService = app.get(PrismaService);
+    const [{ result }] = await prismaService.$queryRaw<
+      { result: string }[]
+    >`SELECT current_database() AS result`;
+
+    expect(result).toBe("odin_book_test");
   });
 
   afterEach(async () => {

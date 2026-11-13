@@ -11,3 +11,20 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model User {
+  id              Int              @id @default(autoincrement())
+  email           String           @unique
+  passwordHash    String
+  createdAt       DateTime         @default(now())
+  refreshSessions RefreshSession[]
+}
+
+model RefreshSession {
+  id                Int      @id @default(autoincrement())
+  tokenHash         String   @unique
+  userId            Int
+  expiresAt         DateTime
+  absoluteExpiresAt DateTime
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

@@ -24,16 +24,17 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    fileParallelism: false,
     projects: [
       { test: { name: "unit", include: ["**/*.spec.ts"] } },
       { test: { name: "e2e", include: ["**/*.e2e-spec.ts"] } },
     ],
   },
   fmt: {
-    singleQuote: true,
+    singleQuote: false,
     trailingComma: "all",
     printWidth: 80,
     sortPackageJson: false,
-    ignorePatterns: [],
+    ignorePatterns: [".agents/**"],
   },
 });

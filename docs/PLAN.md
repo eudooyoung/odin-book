@@ -55,6 +55,46 @@ rectangle Authentication {
 @enduml
 ```
 
+#### Token & Cookie Policy
+
+##### AccessToken
+
+- Format: JWT
+- Payload: sub(user id), email
+- Signing algoritm: HS256
+- Expiration: 15 minutes
+
+##### Opague RefreshToken
+
+- Format: Opaque token
+- Store SHA-256 hash in database
+- Expiration: 7days
+- Used only once, issued every refresh
+- Absolute expiration: 30days from the first issue
+
+##### Cookie
+
+| Attribute | Access Token            | Refresh Token           |
+| --------- | ----------------------- | ----------------------- |
+| httpOnly  | true                    | true                    |
+| secure    | false(dev) / true(prod) | false(dev) / true(prod) |
+| sameSite  | lax                     | lax                     |
+| path      | /                       | /auth                   |
+| maxAge    | 15 minutes              | 7 days                  |
+
+#### Email Resgistraion
+
+##### Input Validation
+
+|  Field   | Length(characters) | Rules                     |
+| :------: | :----------------: | ------------------------- |
+|  Email   |      Max 254       | Valid email format        |
+| Password |       15-128       | No character restrictions |
+
+##### Business Rules
+
+- Email must be unique
+
 ### 1.2 Profile
 
 - Users can
@@ -242,33 +282,44 @@ rectangle Comment {
 
 ```mermaid
 erDiagram
+    User ||--o{ RefreshSession: has
     User ||--|| Profile: has
     User ||..o{ Post: writes
 
     User {
-        Number id PK
+        Int id PK
         String email UK
         String passwordHash
-        Date createdAt
+        DateTime createdAt
     }
     Profile{
-        Number userId PK, FK
+        Int userId PK, FK
         String handle UK
         String imageAddress
         String displayName
         String bio
     }
     Post {
-        Number id PK
-        Number authorId FK
+        Int id PK
+        Int authorId FK
         String content
-        Date createdAt
+        DateTime createdAt
+    }
+    RefreshSession {
+        Int id PK
+        String tokenHash UK
+        Int userId FK
+        DateTime expiresAt
+        DateTime AbsoluteExpiresAt
     }
 ```
 
 ## 4. Technology Stacks
 
-- **Backend**: NestJS + TypeScript
+- **Backend**:
+  - NestJS + TypeScript
+  - Vite+
+  - Zod, argon2, Passport, JWT
 - **Database**: PostgreSQL / **ORM**: Prisma
 - **Frontend**: React, TanStack Query, Tailwind CSS
 - **Testing**: Vitest, Supertest
@@ -278,7 +329,7 @@ erDiagram
 ### P0
 
 - **Set up**: scaffold NestJS·React App, PostgreSQL (Docker Compose), and test environment
-- Email authentication·login·logout
+- **Email authentication**: Registration·login·logout
 - Profile view·update
 - User list view·search
 - Post CRUD
