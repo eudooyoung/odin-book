@@ -310,6 +310,7 @@ erDiagram
         String tokenHash UK
         Int userId FK
         DateTime expiresAt
+        DateTime AbsoluteExpiresAt
     }
 ```
 

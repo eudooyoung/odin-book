@@ -78,10 +78,20 @@ export class AuthService {
     const newRefreshToken = randomBytes(32).toString("base64url");
     const newTokenHash = createHash("sha256").update(newRefreshToken).digest("hex");
 
-    await this.prismaService.refreshSession.update({
-      data: { tokenHash: newTokenHash, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
-      where: { tokenHash },
-    });
+    try {
+      await this.prismaService.refreshSession.update({
+        data: {
+          tokenHash: newTokenHash,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+        where: { tokenHash },
+      });
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === "P2025") {
+        throw new UnauthorizedException("Invalid refresh token");
+      }
+      throw error;
+    }
 
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }

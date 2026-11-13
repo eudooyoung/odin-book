@@ -267,6 +267,36 @@ describe("AuthService (unit)", () => {
 
       await expect(service.refresh("expired-refresh-token")).rejects.toThrow(UnauthorizedException);
     });
+
+    it("converts P2025 to UnauthorizedException at update query", async () => {
+      // arrange
+      const issuedAt = Date.now();
+      const authUser = { id: 1, email: "user@email.com" };
+      const refreshToken = "refresh-token";
+      const tokenHash = createHash("sha256").update(refreshToken).digest("hex");
+      const newRefreshToken = "new-refresh-token";
+      const buffer = Buffer.alloc(32);
+      vi.mocked(prismaService.refreshSession.findUnique).mockResolvedValue({
+        tokenHash,
+        userId: authUser.id,
+        user: authUser,
+        expiresAt: new Date(issuedAt + 7 * 24 * 60 * 60 * 1000),
+        absoluteExpiresAt: new Date(issuedAt + 30 * 24 * 60 * 60 * 1000),
+      });
+      vi.spyOn(buffer, "toString").mockReturnValue(newRefreshToken);
+      vi.mocked(randomBytes).mockImplementation(() => buffer);
+      vi.mocked(prismaService.refreshSession.update).mockRejectedValue(
+        new PrismaClientKnownRequestError("Record doesn't exist", {
+          code: "P2025",
+          clientVersion: "test",
+        }),
+      );
+
+      // act & assert
+      await expect(service.refresh(refreshToken)).rejects.toThrow(UnauthorizedException);
+      expect(prismaService.refreshSession.findUnique).toHaveBeenCalled();
+      expect(prismaService.refreshSession.update).toHaveBeenCalled();
+    });
   });
 
   describe(".logout", () => {
@@ -282,7 +312,7 @@ describe("AuthService (unit)", () => {
     it("ignores P2025 error thrown during refreshSession.delete query", async () => {
       const refreshToken = "unknown-refresh-token";
       prismaService.refreshSession.delete.mockRejectedValue(
-        new PrismaClientKnownRequestError("record doesn't exist", {
+        new PrismaClientKnownRequestError("Record doesn't exist", {
           code: "P2025",
           clientVersion: "test",
         }),
