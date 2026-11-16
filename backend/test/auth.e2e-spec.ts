@@ -27,7 +27,7 @@ describe("AuthModule", () => {
     await app.close();
   });
 
-  describe("POST /auth/register", () => {
+  describe("/auth/register (POST)", () => {
     it("registers a user with email and password", async () => {
       const registration = {
         email: "user@email.com",
@@ -96,7 +96,7 @@ describe("AuthModule", () => {
     });
   });
 
-  describe("POST /auth/login", () => {
+  describe("/auth/login (POST)", () => {
     it("issues token cookies with expected options and stores the RT hash", async () => {
       const registration = {
         email: "user@email.com",
@@ -188,7 +188,7 @@ describe("AuthModule", () => {
     });
   });
 
-  describe("POST /auth/refresh", () => {
+  describe("/auth/refresh (POST)", () => {
     it("rotates AT & RT", async () => {
       // register & login
       const registration = {
@@ -383,7 +383,7 @@ describe("AuthModule", () => {
     });
   });
 
-  describe("POST /auth/logout", () => {
+  describe("/auth/logout (POST)", () => {
     afterEach(() => {
       vi.useRealTimers();
     });

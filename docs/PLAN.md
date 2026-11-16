@@ -328,9 +328,9 @@ erDiagram
 
 ### P0
 
-- **Set up**: scaffold NestJS·React App, PostgreSQL (Docker Compose), and test environment
-- **Email authentication**: Registration·login·logout
-- Profile view·update
-- User list view·search
-- Post CRUD
-- Review
+- [x] **Set up**: scaffold NestJS·React App, PostgreSQL (Docker Compose), and test environment
+- [ ] **Email authentication**: Registration·login·logout
+- [ ] Profile view·update
+- [ ] User list view·search
+- [ ] Post CRUD
+- [ ] Review
