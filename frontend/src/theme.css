@@ -1,0 +1,41 @@
+/* Tailwind CSS v4 theme. Import this file after installing Tailwind. */
+@theme {
+  /* Primary — deep navy */
+  --color-primary-50: hsl(233.3 39.1% 95.5%);
+  --color-primary-100: hsl(225.9 39.5% 91.6%);
+  --color-primary-200: hsl(228.3 40.9% 82.7%);
+  --color-primary-300: hsl(226.9 42.6% 74.7%);
+  --color-primary-400: hsl(225.8 42.4% 66.7%);
+  --color-primary-500: hsl(224.5 41.8% 58.2%);
+  --color-primary-600: hsl(224.4 32% 47.3%);
+  --color-primary-700: hsl(223.8 33% 37.5%);
+  --color-primary-800: hsl(224.4 34.7% 28.2%);
+  --color-primary-900: hsl(223.8 37.4% 19.4%);
+  --color-primary-950: hsl(224 39.5% 14.9%);
+
+  /* Neutral — low-saturation cool gray */
+  --color-neutral-50: hsl(240 4.3% 95.5%);
+  --color-neutral-100: hsl(220 5.9% 90%);
+  --color-neutral-200: hsl(222.9 7.5% 81.8%);
+  --color-neutral-300: hsl(222.4 12.2% 72.7%);
+  --color-neutral-400: hsl(222.9 15.4% 64.3%);
+  --color-neutral-500: hsl(222.2 16.7% 56.7%);
+  --color-neutral-600: hsl(221.7 14.9% 47.5%);
+  --color-neutral-700: hsl(221.1 17.6% 39%);
+  --color-neutral-800: hsl(220 16% 25.7%);
+  --color-neutral-900: hsl(220 16.7% 14.1%);
+  --color-neutral-950: hsl(217.5 17.4% 9%);
+
+  /* Light theme surfaces */
+  --color-page: #f8f9fb;
+  --color-surface: #ffffff;
+}
+
+/* Provisional semantic roles; validate against the actual UI. */
+@theme inline {
+  --color-text-primary: var(--color-neutral-900);
+  --color-text-secondary: var(--color-neutral-700);
+  --color-border: var(--color-neutral-200);
+  --color-action: var(--color-primary-950);
+  --color-action-hover: var(--color-primary-900);
+}

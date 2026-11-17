@@ -321,7 +321,7 @@ erDiagram
   - Vite+
   - Zod, argon2, Passport, JWT
 - **Database**: PostgreSQL / **ORM**: Prisma
-- **Frontend**: React, TanStack Query, Tailwind CSS
+- **Frontend**: React, React Router, TanStack Query, Tailwind CSS
 - **Testing**: Vitest, Supertest
 
 ## 5. Phases
